@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hawwil/core/theme/app_theme.dart';
-import 'package:hawwil/main.dart';
-import 'package:hawwil/providers/auth_provider.dart';
+import 'core/theme/app_theme.dart';
+import 'main.dart';
 import 'views/home/home_screen.dart';
+import 'views/transfer/transfer_screen.dart';
 import 'views/cards/cards_screen.dart';
-// Removed duplicate relative imports that caused URI errors
+import 'views/profile/profile_screen.dart';
+import 'providers/auth_provider.dart';
 
 final currentTabProvider = StateProvider<int>((ref) => 0);
 
@@ -118,22 +119,6 @@ class MainLayout extends ConsumerWidget {
   }
 }
 
-class HomeScreen {
-  const HomeScreen();
-}
-
-class TransferScreen {
-  const TransferScreen();
-}
-
-class CardsScreen {
-  const CardsScreen();
-}
-
-class ProfileScreen {
-  const ProfileScreen();
-}
-
 // ── Auth Modal ──
 class AuthModal extends ConsumerStatefulWidget {
   const AuthModal({super.key});
@@ -172,7 +157,8 @@ class _AuthModalState extends ConsumerState<AuthModal> {
               ),
             ),
             const SizedBox(height: 20),
-            // Tabs
+            
+            // --- تبويبات البريد الإلكتروني ---
             Row(
               children: [
                 Expanded(
@@ -211,20 +197,45 @@ class _AuthModalState extends ConsumerState<AuthModal> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(_error!,
-                  style: const TextStyle(color: AppTheme.red, fontSize: 13)),
+              Text(_error!, style: const TextStyle(color: AppTheme.red, fontSize: 13)),
             ],
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _loading ? null : _submit,
+              onPressed: _loading ? null : _submitEmail,
               child: _loading
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : Text(_isLogin ? 'تسجيل الدخول' : 'إنشاء حساب'),
+            ),
+            
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('أو', style: TextStyle(color: Colors.grey)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+            ),
+
+            // --- زر Apple Sign In ---
+            OutlinedButton.icon(
+              onPressed: _loading ? null : _submitApple,
+              icon: const Icon(Icons.apple, color: Colors.black, size: 24),
+              label: const Text('المتابعة باستخدام Apple', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800)),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Colors.black, width: 1.5),
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -233,7 +244,7 @@ class _AuthModalState extends ConsumerState<AuthModal> {
     );
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitEmail() async {
     if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
       setState(() => _error = 'يرجى إدخال البريد وكلمة المرور');
       return;
@@ -241,18 +252,35 @@ class _AuthModalState extends ConsumerState<AuthModal> {
     setState(() { _loading = true; _error = null; });
 
     try {
-      final svc = ref.read(firebaseServiceProvider);
+      final repo = ref.read(authRepositoryProvider); 
       if (_isLogin) {
-        await svc.signInWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
+        await repo.signInWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
       } else {
-        await svc.registerWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
+        await repo.registerWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       setState(() => _error = 'تأكد من صحة البيانات (كلمة المرور 6 أحرف على الأقل)');
     }
 
-    setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submitApple() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.signInWithApple();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      setState(() => _error = 'لم يتم تفعيل Apple Sign-In بعد، أو حدث خطأ.');
+    }
+    
+    if (mounted) {
+      setState(() => _loading = false);
+    }
   }
 }
 

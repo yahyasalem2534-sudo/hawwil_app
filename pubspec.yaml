@@ -1,6 +1,7 @@
 name: hawwil
-description: منصة حوّل للخدمات المالية الموريتانية
+description: تطبيق حوّل للخدمات المالية والبطاقات الرقمية
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -9,31 +10,38 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
-  # Firebase
-  firebase_core: ^3.1.0
-  firebase_auth: ^5.1.0
-  cloud_firestore: ^5.1.0
-  
-  # State Management
-  flutter_riverpod: ^2.5.1
-  
-  # UI
-  google_fonts: ^6.2.1
+  cupertino_icons: ^1.0.6
+
+  # State Management (إدارة الحالة)
+  flutter_riverpod: ^2.4.9
+
+  # Firebase (قواعد البيانات والمصادقة الأساسية)
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.14.0
+  firebase_auth: ^4.16.0
+
+  # Advanced Authentication (المصادقة المتقدمة)
+  sign_in_with_apple: ^6.1.1
+  google_sign_in: ^6.2.1
+
+  # UI & Styling (التصميم والواجهات)
+  google_fonts: ^6.1.0
   cached_network_image: ^3.3.1
   shimmer: ^3.0.0
-  image_picker: ^1.1.2
-  
-  # Utils
+
+  # Utilities (الأدوات المساعدة)
   intl: ^0.19.0
-  shared_preferences: ^2.2.3
-  url_launcher: ^6.3.0
-  http: ^1.2.1
+  http: ^1.2.0
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
+
+  # مسارات الصور المعتمدة في المشروع
+  assets:
+    - assets/images/

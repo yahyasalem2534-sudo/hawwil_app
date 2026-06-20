@@ -16,15 +16,4 @@ class AppConstants {
   static const String telegramToken =
       '8710007016:AAEYafJuYblld43Las00My1W5F5ymzNPxhQ';
   static const String telegramChatId = '2109725437';
-
-  // Regions
-  static const Map<String, String> regionNames = {
-    'US': '🇺🇸 أمريكي',
-    'FR': '🇫🇷 فرنسي',
-    'AE': '🇦🇪 إماراتي',
-    'SA': '🇸🇦 سعودي',
-    'TR': '🇹🇷 تركي',
-    'UK': '🇬🇧 بريطاني',
-    'Global': '🌍 عالمي',
-  };
 }

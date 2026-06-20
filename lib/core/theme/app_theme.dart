@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
+  // Brand Colors
   static const Color green = Color(0xFF0A7C4E);
   static const Color greenDark = Color(0xFF065C3A);
   static const Color greenLight = Color(0xFFE8F5EE);
@@ -14,7 +16,7 @@ class AppTheme {
       seedColor: green,
       brightness: Brightness.light,
     ),
-    fontFamily: 'Cairo',
+    textTheme: GoogleFonts.tajawalTextTheme(),
     scaffoldBackgroundColor: const Color(0xFFF5F7F6),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
@@ -22,22 +24,10 @@ class AppTheme {
       elevation: 0,
       centerTitle: true,
     ),
-    cardTheme: CardThemeData(
+    cardTheme: CardTheme(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: Colors.white,
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: green,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -54,37 +44,40 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: green, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: green,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: GoogleFonts.tajawal(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     ),
   );
 
-  static ThemeData darkTheme = newMethod();
-
-  static ThemeData newMethod() {
-    return ThemeData(
-  useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: green,
-    brightness: Brightness.dark,
-  ),
-  fontFamily: 'Cairo',
-  scaffoldBackgroundColor: const Color(0xFF0D0D0D),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Color(0xFF141414),
-    foregroundColor: Color(0xFFFDFDFD),
-    elevation: 0,
-    centerTitle: true,
-  ),
-  cardTheme: CardThemeData(
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: green,
+      brightness: Brightness.dark,
     ),
-    color: const Color(0xFF141414),
-  ),
-);
-  }
+    textTheme: GoogleFonts.tajawalTextTheme(ThemeData.dark().textTheme),
+    scaffoldBackgroundColor: const Color(0xFF0D0D0D),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF141414),
+      foregroundColor: Color(0xFFFDFDFD),
+      elevation: 0,
+      centerTitle: true,
+    ),
+    cardTheme: CardTheme(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: const Color(0xFF141414),
+    ),
+  );
 }
