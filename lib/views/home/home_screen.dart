@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../providers/data_providers.dart';
 import '../../main_layout.dart';
@@ -12,48 +15,70 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? AppTheme.darkBackground : Colors.grey[50],
       body: RefreshIndicator(
         color: AppTheme.green,
-        onRefresh: () async {},
+        onRefresh: () async {
+          ref.invalidate(slidersProvider);
+          ref.invalidate(gamesProvider);
+        },
         child: CustomScrollView(
           slivers: [
-            // Hero Section
-            SliverToBoxAdapter(child: _buildHero(context, ref)),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-            // Order Tracker
+            // 1. السلايدر الاحترافي (Banner Carousel)
+            SliverToBoxAdapter(
+              child: _buildBannerCarousel(ref),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+            // 2. تتبع الطلبات (للبطاقات)
             SliverToBoxAdapter(child: _buildOrderTracker(context, ref)),
 
-            // Stats
-            SliverToBoxAdapter(child: _buildStats()),
-
-            // How it works
-            SliverToBoxAdapter(child: _buildHowItWorks()),
-
-            // Games Preview
+            // 3. عنوان قسم الألعاب والبطاقات
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'البطاقات والألعاب',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w900),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.sports_esports, color: AppTheme.green),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'شحن الألعاب',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                     TextButton(
-                      onPressed: () => ref
-                          .read(currentTabProvider.notifier)
-                          .state = 2,
-                      child: const Text('عرض الكل',
-                          style: TextStyle(color: AppTheme.green)),
+                      // توجيه المستخدم لتبويب البطاقات (أصبح الفهرس 1 بعد حذف التحويل)
+                      onPressed: () => ref.read(currentTabProvider.notifier).state = 1,
+                      child: const Text('عرض الكل', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
               ),
             ),
-            _buildGamesPreview(ref),
+
+            // 4. شبكة الألعاب المتجاوبة
+            _buildGamesGrid(ref),
 
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],
@@ -62,90 +87,89 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHero(BuildContext context, WidgetRef ref) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.greenDark, AppTheme.green],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
+  Widget _buildBannerCarousel(WidgetRef ref) {
+    final slidersAsync = ref.watch(slidersProvider);
+
+    return slidersAsync.when(
+      loading: () => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          height: 180,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
-        borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(99),
-            ),
-            child: const Text(
-              '🇲🇷 خدمات مالية موريتانية موثوقة',
-              style: TextStyle(
-                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
-            ),
+      error: (e, _) => SizedBox(
+        height: 180,
+        child: Center(
+          child: Text(
+            'عذراً، تعذر تحميل العروض',
+            style: TextStyle(color: Colors.red[300], fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'حوّل أموالك بين\nالبنوك الموريتانية\nبكل سهولة',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'منصة آمنة وسريعة لتحويل الأموال وشراء البطاقات الرقمية.',
-            style: TextStyle(
-                color: Colors.white70, fontSize: 13, height: 1.5),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () =>
-                      ref.read(currentTabProvider.notifier).state = 1,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.green,
-                    minimumSize: const Size(0, 46),
-                  ),
-                  child: const Text('🏦 ابدأ التحويل'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () =>
-                      ref.read(currentTabProvider.notifier).state = 2,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white60),
-                    minimumSize: const Size(0, 46),
-                  ),
-                  child: const Text('🎮 البطاقات'),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
+      data: (images) {
+        if (images.isEmpty) return const SizedBox();
+
+        return CarouselSlider(
+          options: CarouselOptions(
+            height: 180.0,
+            autoPlay: true,
+            enlargeCenterPage: true,
+            aspectRatio: 16 / 9,
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enableInfiniteScroll: true,
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+            viewportFraction: 0.92,
+          ),
+          items: images.map((imageUrl) {
+            return Builder(
+              builder: (BuildContext context) {
+                return Container(
+                  width: MediaQuery.of(context).size.width,
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(color: Colors.grey[200]),
+                      errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.grey),
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
   Widget _buildOrderTracker(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
+        elevation: isDarkMode ? 0 : 2,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -161,9 +185,15 @@ class HomeScreen extends ConsumerWidget {
                   Expanded(
                     child: TextField(
                       controller: controller,
-                      decoration: const InputDecoration(
-                        hintText: 'HW-12345 أو CRD-12345',
+                      decoration: InputDecoration(
+                        hintText: 'مثال: CRD-12345',
                         isDense: true,
+                        filled: true,
+                        fillColor: isDarkMode ? Colors.black12 : Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
@@ -175,10 +205,11 @@ class HomeScreen extends ConsumerWidget {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(70, 48),
-                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(80, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
                     ),
-                    child: const Text('بحث'),
+                    child: const Text('بحث', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -189,98 +220,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _showOrderStatus(BuildContext context, WidgetRef ref, String refNum) {
-    showDialog(
-      context: context,
-      builder: (_) => _OrderStatusDialog(orderRef: refNum, ref: ref),
-    );
-  }
-
-  Widget _buildStats() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: AppTheme.greenLight,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: const [
-          _StatItem(value: '+10,000', label: 'عملية ناجحة'),
-          _StatItem(value: '5%', label: 'عمولة شفافة'),
-          _StatItem(value: '24س', label: 'دعم متواصل'),
-          _StatItem(value: '100%', label: 'أمان مضمون'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHowItWorks() {
-    const steps = [
-      ('١', 'أرسل المبلغ', 'أرسل لرقم حسابنا في أي بنك'),
-      ('٢', 'أرسل الطلب', 'أرفق معلومات التحويل والوصل'),
-      ('٣', 'نُراجع الطلب', 'نتحقق من الإيداع ونحسب العمولة'),
-      ('٤', 'تستلم المبلغ', 'نحوّل فوراً مع إشعار تأكيد'),
-    ];
-
-    return Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'كيف يعمل التحويل؟',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: steps.length,
-            itemBuilder: (_, i) {
-              final s = steps[i];
-              return Container(
-                width: 160,
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE8F5EE)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s.$1,
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: AppTheme.green)),
-                    const SizedBox(height: 6),
-                    Text(s.$2,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    Text(s.$3,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[600]),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGamesPreview(WidgetRef ref) {
+  Widget _buildGamesGrid(WidgetRef ref) {
     final gamesAsync = ref.watch(gamesProvider);
 
     return SliverPadding(
@@ -289,62 +229,56 @@ class HomeScreen extends ConsumerWidget {
         loading: () => SliverGrid(
           delegate: SliverChildBuilderDelegate(
             (_, __) => Shimmer.fromColors(
-              baseColor: Colors.grey[200]!,
+              baseColor: Colors.grey[300]!,
               highlightColor: Colors.grey[100]!,
-              child: Card(child: Container()),
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Container(),
+              ),
             ),
             childCount: 4,
           ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.75,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 220,
+            mainAxisExtent: 270,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
           ),
         ),
-        error: (e, _) =>
-            const SliverToBoxAdapter(child: Text('حدث خطأ في التحميل')),
-        data: (games) => SliverGrid(
-          delegate: SliverChildBuilderDelegate(
-            (ctx, i) => GameCardWidget(
-              game: games[i],
-              onTap: () => showProductModal(ctx, games[i]),
+        error: (e, _) => const SliverToBoxAdapter(
+          child: Center(child: Text('حدث خطأ في تحميل الألعاب')),
+        ),
+        data: (games) {
+          if (games.isEmpty) {
+            return const SliverToBoxAdapter(
+              child: Center(child: Text('لا توجد بطاقات حالياً')),
+            );
+          }
+
+          return SliverGrid(
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => GameCardWidget(
+                game: games[i],
+                onTap: () => showProductModal(ctx, games[i]),
+              ),
+              childCount: games.length, // عرض جميع الألعاب المتوفرة
             ),
-            childCount: games.take(6).length,
-          ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.75,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-          ),
-        ),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 220, // عرض مرن يتكيف مع الشاشة
+              mainAxisExtent: 270, // ارتفاع ثابت يمنع التكدس
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+            ),
+          );
+        },
       ),
     );
   }
-}
 
-class _StatItem extends StatelessWidget {
-  final String value;
-  final String label;
-  const _StatItem({required this.value, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.green)),
-          const SizedBox(height: 4),
-          Text(label,
-              style: const TextStyle(fontSize: 10.5, color: Colors.grey),
-              textAlign: TextAlign.center),
-        ],
-      ),
+  void _showOrderStatus(BuildContext context, WidgetRef ref, String refNum) {
+    showDialog(
+      context: context,
+      builder: (_) => _OrderStatusDialog(orderRef: refNum, ref: ref),
     );
   }
 }
@@ -360,18 +294,20 @@ class _OrderStatusDialog extends ConsumerWidget {
     final svc = r.read(firebaseServiceProvider);
 
     return AlertDialog(
-      title: Text('تتبع الطلب: $orderRef'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('تتبع الطلب: $orderRef', style: const TextStyle(fontSize: 16)),
       content: StreamBuilder<Map<String, dynamic>?>(
         stream: svc.trackOrder(orderRef),
         builder: (_, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const SizedBox(
-                height: 60,
-                child: Center(child: CircularProgressIndicator()));
+              height: 60,
+              child: Center(child: CircularProgressIndicator(color: AppTheme.green)),
+            );
           }
           if (!snap.hasData || snap.data == null) {
             return const Text('❌ لم يتم العثور على الطلب',
-                style: TextStyle(color: AppTheme.red));
+                style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold));
           }
           final data = snap.data!;
           final status = data['status'];
@@ -380,23 +316,26 @@ class _OrderStatusDialog extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text('✅ تم اكتمال طلبك!',
-                    style: TextStyle(
-                        color: AppTheme.green, fontWeight: FontWeight.w800)),
+                    style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.w900, fontSize: 18)),
                 if (data['deliveredCode'] != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  const Text('كود البطاقة:', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppTheme.greenLight,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: AppTheme.green, style: BorderStyle.solid),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.green.withOpacity(0.5)),
                     ),
                     child: SelectableText(
                       data['deliveredCode'],
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                           fontFamily: 'monospace',
-                          fontSize: 18,
+                          fontSize: 20,
+                          color: AppTheme.greenDark,
                           fontWeight: FontWeight.w900),
                     ),
                   ),
@@ -405,17 +344,16 @@ class _OrderStatusDialog extends ConsumerWidget {
             );
           } else if (status == 'rejected') {
             return const Text('❌ تم رفض الطلب. يرجى التواصل مع الدعم.',
-                style: TextStyle(color: AppTheme.red));
+                style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold));
           }
           return const Text('⏳ طلبك قيد المراجعة...',
-              style: TextStyle(
-                  color: Colors.orange, fontWeight: FontWeight.w800));
+              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 16));
         },
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('إغلاق'),
+          child: const Text('إغلاق', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ],
     );

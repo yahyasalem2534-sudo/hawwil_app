@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'main.dart';
 import 'views/home/home_screen.dart';
-import 'views/transfer/transfer_screen.dart';
+// تم إزالة استيراد شاشة التحويل لتنظيف التطبيق تماماً
 import 'views/cards/cards_screen.dart';
 import 'views/profile/profile_screen.dart';
 import 'providers/auth_provider.dart';
@@ -20,9 +21,9 @@ class MainLayout extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
+    // تم إزالة شاشة التحويل والإبقاء على الألعاب والبطاقات فقط
     final tabs = [
       const HomeScreen(),
-      const TransferScreen(),
       const CardsScreen(),
       if (user != null) const ProfileScreen(),
     ];
@@ -71,13 +72,16 @@ class MainLayout extends ConsumerWidget {
         ],
       ),
       body: IndexedStack(
+        // تأمين عدم تجاوز الفهرس لعدد الشاشات المتاحة
         index: currentTab.clamp(0, tabs.length - 1),
         children: tabs,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: currentTab.clamp(0, user != null ? 3 : 2),
+        // تحديد العنصر النشط مع ضمان عدم تجاوزه للرقم 2 (لأن لدينا 3 أزرار كحد أقصى)
+        selectedIndex: currentTab.clamp(0, 2),
         onDestinationSelected: (i) {
-          if (i == 3 && user == null) {
+          // إذا ضغط المستخدم على الزر الثالث (الفهرس 2) وهو غير مسجل للدخول
+          if (i == 2 && user == null) {
             _showAuthModal(context, ref);
             return;
           }
@@ -90,10 +94,6 @@ class MainLayout extends ConsumerWidget {
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded, color: AppTheme.green),
               label: 'الرئيسية'),
-          const NavigationDestination(
-              icon: Icon(Icons.swap_horiz_outlined),
-              selectedIcon: Icon(Icons.swap_horiz_rounded, color: AppTheme.green),
-              label: 'التحويل'),
           const NavigationDestination(
               icon: Icon(Icons.gamepad_outlined),
               selectedIcon: Icon(Icons.gamepad_rounded, color: AppTheme.green),
