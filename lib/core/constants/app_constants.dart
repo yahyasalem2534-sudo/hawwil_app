@@ -16,4 +16,14 @@ class AppConstants {
   static const String telegramToken =
       '8710007016:AAEYafJuYblld43Las00My1W5F5ymzNPxhQ';
   static const String telegramChatId = '2109725437';
+
+  // Region Names (القطعة الناقصة التي سببّت الخطأ)
+  static const Map<String, String> regionNames = {
+    'global': 'عالمي',
+    'us': 'أمريكي',
+    'sa': 'سعودي',
+    'ae': 'إماراتي',
+    'tr': 'تركي',
+    'ma': 'مغربي',
+  };
 }

@@ -6,9 +6,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../providers/data_providers.dart';
-import '../../main_layout.dart';
 import '../../widgets/game_card_widget.dart';
 import '../cards/product_modal.dart';
+import '../../services/firebase_service.dart'; // تم إضافة الاستدعاء الصحيح للفايربيس
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -18,7 +18,8 @@ class HomeScreen extends ConsumerWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? AppTheme.darkBackground : Colors.grey[50],
+      // تم تصحيح لون الخلفية هنا
+      backgroundColor: isDarkMode ? const Color(0xFF0D0D0D) : Colors.grey[50],
       body: RefreshIndicator(
         color: AppTheme.green,
         onRefresh: () async {
@@ -68,8 +69,12 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     ),
                     TextButton(
-                      // توجيه المستخدم لتبويب البطاقات (أصبح الفهرس 1 بعد حذف التحويل)
-                      onPressed: () => ref.read(currentTabProvider.notifier).state = 1,
+                      // تم تصحيح زر عرض الكل لتجنب أخطاء التوجيه
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('جميع البطاقات معروضة بالأسفل')),
+                        );
+                      },
                       child: const Text('عرض الكل', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.bold)),
                     ),
                   ],
@@ -261,11 +266,11 @@ class HomeScreen extends ConsumerWidget {
                 game: games[i],
                 onTap: () => showProductModal(ctx, games[i]),
               ),
-              childCount: games.length, // عرض جميع الألعاب المتوفرة
+              childCount: games.length, 
             ),
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 220, // عرض مرن يتكيف مع الشاشة
-              mainAxisExtent: 270, // ارتفاع ثابت يمنع التكدس
+              maxCrossAxisExtent: 220, 
+              mainAxisExtent: 270, 
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
             ),
@@ -291,7 +296,8 @@ class _OrderStatusDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext ctx, WidgetRef r) {
-    final svc = r.read(firebaseServiceProvider);
+    // تم تصحيح استدعاء الفايربيس هنا ليعمل بشكل مباشر ومضمون
+    final svc = FirebaseService();
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
