@@ -23,6 +23,11 @@ void showProductModal(BuildContext context, GameModel game) {
   );
 }
 
+// دالة مساعدة للجسر من الشاشة الرئيسية
+Widget showProductModalContent(BuildContext context, GameModel game) {
+  return _ProductModal(game: game);
+}
+
 class _ProductModal extends ConsumerStatefulWidget {
   final GameModel game;
   const _ProductModal({required this.game});
@@ -70,7 +75,7 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 40), // توازن المساحة
+                const SizedBox(width: 40),
                 Container(
                   width: 50,
                   height: 5,
@@ -148,14 +153,12 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ويدجت اختيار الباقات
                   PackageSelectorWidget(
                     game: widget.game,
                     onPackageSelected: (pkg) => setState(() => _selectedPkg = pkg),
                   ),
                   const SizedBox(height: 24),
                   
-                  // اختيار بنك الدفع
                   const Text('🏦 اختر بنك الدفع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 12),
                   payBanksAsync.when(
@@ -200,7 +203,6 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
                   ),
                   const SizedBox(height: 24),
 
-                  // الحقول ومعلومات الدفع
                   if (!widget.game.isService) ...[
                     TextField(
                       controller: _playerIdCtrl,
@@ -224,37 +226,36 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
                   const SizedBox(height: 20),
                   _buildReceiptUploader(),
                   
-                  // مساحة إضافية لتجنب تغطية الزر السفلي للمحتوى
-                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 120),
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 40),
                 ],
               ),
             ),
           ),
-        ],
-      ),
-      
-      // --- الزر السفلي الثابت ---
-      bottomSheet: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.05), blurRadius: 10, offset: const Offset(0, -4))
-          ],
-        ),
-        child: SafeArea(
-          child: ElevatedButton(
-            onPressed: _loading ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+
+          // --- الزر السفلي الثابت ---
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.05), blurRadius: 10, offset: const Offset(0, -4))
+              ],
             ),
-            child: _loading
-                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
-                : const Text('إتمام الطلب', style: TextStyle(fontSize: 18)),
+            child: SafeArea(
+              child: ElevatedButton(
+                onPressed: _loading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: _loading
+                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                    : const Text('إتمام الطلب', style: TextStyle(fontSize: 18)),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

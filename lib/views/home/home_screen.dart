@@ -7,13 +7,13 @@ import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/game_model.dart';
 import '../../providers/data_providers.dart';
+import '../cards/product_modal.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // جلب البيانات باستخدام المزودات المنفصلة التي قمت ببرمجتها
     final slidersAsync = ref.watch(slidersProvider);
     final gamesAsync = ref.watch(gameGamesProvider);
     final servicesAsync = ref.watch(serviceGamesProvider);
@@ -29,18 +29,15 @@ class HomeScreen extends ConsumerWidget {
               _buildSearchBar(context),
               const SizedBox(height: 20),
               
-              // قسم السلايدر مربوط بـ Firebase
               _buildHeroSlider(context, slidersAsync),
               
               const SizedBox(height: 24),
               _buildSectionTitle('الألعاب الأكثر طلباً', () {}),
-              // قسم الألعاب
-              _buildProductsSection(gamesAsync),
+              _buildProductsSection(context, gamesAsync),
               
               const SizedBox(height: 24),
               _buildSectionTitle('البطاقات الرقمية', () {}),
-              // قسم الخدمات/البطاقات
-              _buildProductsSection(servicesAsync),
+              _buildProductsSection(context, servicesAsync),
               
               const SizedBox(height: 30),
             ],
@@ -50,7 +47,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- شريط البحث ---
   Widget _buildSearchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -78,12 +74,10 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- السلايدر المربوط بـ Firebase ---
   Widget _buildHeroSlider(BuildContext context, AsyncValue<List<String>> slidersAsync) {
     return slidersAsync.when(
       data: (urls) {
         if (urls.isEmpty) {
-          // سلايدر افتراضي في حال لم تكن هناك صور في قاعدة البيانات
           return _buildDefaultSliderItem(context, 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?q=80&w=1000');
         }
         return CarouselSlider(
@@ -102,7 +96,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // تصميم عنصر السلايدر
   Widget _buildDefaultSliderItem(BuildContext context, String imageUrl) {
     return Container(
       width: MediaQuery.of(context).size.width,
@@ -135,7 +128,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // تأثير التحميل للسلايدر
   Widget _buildSliderShimmer(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
@@ -152,7 +144,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- عنوان القسم ---
   Widget _buildSectionTitle(String title, VoidCallback onSeeAll) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
@@ -169,8 +160,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // --- قسم المنتجات (ألعاب أو بطاقات) ---
-  Widget _buildProductsSection(AsyncValue<List<GameModel>> asyncGames) {
+  Widget _buildProductsSection(BuildContext context, AsyncValue<List<GameModel>> asyncGames) {
     return asyncGames.when(
       data: (items) {
         if (items.isEmpty) {
@@ -190,7 +180,6 @@ class HomeScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final item = items[index];
               
-              // حساب أقل سعر
               double startingPrice = 0;
               if (item.pkgs.isNotEmpty) {
                 startingPrice = item.pkgs.map((p) => p.price).reduce((a, b) => a < b ? a : b);
@@ -199,7 +188,7 @@ class HomeScreen extends ConsumerWidget {
               final imageUrl = item.logo ?? item.icon ?? '';
 
               return ProductCard(
-                game: item, // نمرر الكائن كاملاً لنستخدمه عند الضغط
+                game: item,
                 startingPrice: startingPrice.toStringAsFixed(0),
                 imageUrl: imageUrl,
               );
@@ -215,7 +204,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // تأثير التحميل للمنتجات
   Widget _buildProductsShimmer(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
@@ -240,7 +228,6 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-// --- بطاقة المنتج ---
 class ProductCard extends StatelessWidget {
   final GameModel game;
   final String startingPrice;
@@ -270,8 +257,12 @@ class ProductCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
-            // TODO: فتح ProductModal وتمرير الكائن game
-            // showModalBottomSheet(context: context, builder: (_) => ProductModal(game: game));
+            showModalBottomSheet(
+              context: context, 
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => _ProductModalBridge(game: game) // الجسر لتفادي الأخطاء
+            );
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +280,7 @@ class ProductCard extends StatelessWidget {
                       ? const Icon(Icons.videogame_asset, size: 50, color: Colors.grey)
                       : CachedNetworkImage(
                           imageUrl: imageUrl,
-                          fit: BoxFit.contain, // لحل مشكلة قص الصور
+                          fit: BoxFit.contain,
                           placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: AppTheme.greenLight)),
                           errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
                         ),
@@ -327,5 +318,15 @@ class ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ProductModalBridge extends StatelessWidget {
+  final GameModel game;
+  const _ProductModalBridge({required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return showProductModalContent(context, game);
   }
 }
