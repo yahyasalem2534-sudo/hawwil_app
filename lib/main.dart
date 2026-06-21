@@ -3,17 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'main_layout.dart';
-import 'firebase_options.dart';
+import 'views/home/home_screen.dart'; // تم تصحيح مسار الشاشة الرئيسية
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // تم الاعتماد على ملف google-services.json مباشرة
+  await Firebase.initializeApp();
 
   // ضبط ألوان شريط الحالة ليكون متناسقاً مع الواجهة
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -33,7 +31,6 @@ class HawwilApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      // تغيير العنوان لـ Hawwil ليتناسب مع الاسم الرسمي الذي اتفقنا عليه
       title: 'Hawwil', 
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -45,7 +42,7 @@ class HawwilApp extends ConsumerWidget {
         textDirection: TextDirection.rtl,
         child: child!,
       ),
-      home: const MainLayout(),
+      home: const HomeScreen(), // تم تصحيح اسم الويدجت هنا
     );
   }
 }
