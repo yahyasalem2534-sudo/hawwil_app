@@ -17,10 +17,8 @@ void showProductModal(BuildContext context, GameModel game) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => ProviderScope(
-      parent: ProviderScope.containerOf(context),
-      child: _ProductModal(game: game),
-    ),
+    // تم حذف ProviderScope هنا لأنها تسبب انهيار التطبيق (Crash) في الإصدارات الجديدة
+    builder: (ctx) => _ProductModal(game: game),
   );
 }
 
@@ -61,7 +59,6 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
       ),
       child: Column(
         children: [
-          // Handle العلوي للسحب
           const SizedBox(height: 8),
           Center(
             child: Container(
@@ -73,7 +70,6 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
               ),
             ),
           ),
-          // Header الهيدر
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -115,22 +111,17 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
             ),
           ),
           const Divider(height: 1),
-          // Body محتوى النموذج
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // أداة اختيار الباقات والمناطق الديناميكية
                   PackageSelectorWidget(
                     game: widget.game,
                     onPackageSelected: (pkg) => setState(() => _selectedPkg = pkg),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // بنوك الدفع
                   const Text('🏦 اختر بنك الدفع',
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                   const SizedBox(height: 8),
@@ -174,9 +165,7 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
                       );
                     },
                   ),
-
                   const SizedBox(height: 20),
-
                   if (!widget.game.isService) ...[
                     TextField(
                       controller: _playerIdCtrl,
@@ -184,19 +173,16 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
                     ),
                     const SizedBox(height: 12),
                   ],
-
                   TextField(
                     controller: _phoneCtrl,
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(labelText: 'رقم هاتفك للتأكيد *'),
                   ),
-
                   const SizedBox(height: 20),
                   _buildPaymentNote(),
                   const SizedBox(height: 16),
                   _buildReceiptUploader(),
                   const SizedBox(height: 24),
-
                   ElevatedButton(
                     onPressed: _loading ? null : _submit,
                     child: _loading
@@ -314,7 +300,6 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
     try {
       final ref_ = 'CRD-${DateTime.now().millisecondsSinceEpoch % 90000 + 10000}';
       
-      // صياغة وعرض المنطقة بشكل ديناميكي بناءً على البيانات القادمة من الباقة
       final pkgDisplay = _selectedPkg!.region != null 
           ? '[${_selectedPkg!.region}] ${_selectedPkg!.amount}'
           : _selectedPkg!.amount;
