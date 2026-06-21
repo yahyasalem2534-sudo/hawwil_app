@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.hawwil_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36 // 👈 تثبيت إجباري على 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "com.example.hawwil_app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36 // 👈 تثبيت إجباري على 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

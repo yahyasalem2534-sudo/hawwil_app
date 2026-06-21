@@ -13,33 +13,34 @@ dependencies:
   cupertino_icons: ^1.0.6
 
   # State Management (إدارة الحالة)
-  flutter_riverpod: ^2.4.9
+  flutter_riverpod: ^2.6.1
 
   # Firebase (قواعد البيانات والمصادقة الأساسية)
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.14.0
-  firebase_auth: ^4.16.0
+  firebase_core: ^4.11.0
+  cloud_firestore: ^6.6.0
+  firebase_auth: ^6.5.3
 
   # Advanced Authentication (المصادقة المتقدمة)
-  sign_in_with_apple: ^6.1.1
-  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^8.1.0
+  google_sign_in: ^7.2.0
 
   # UI & Styling (التصميم والواجهات)
-  google_fonts: ^6.1.0
+  google_fonts: ^8.1.0
   cached_network_image: ^3.3.1
   shimmer: ^3.0.0
   carousel_slider: ^5.1.2 
 
   # Utilities (الأدوات المساعدة)
-  intl: ^0.19.0
+  intl: ^0.20.2
   http: ^1.2.0
   image_picker: ^1.0.7
+  riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   android: "launcher_icon"
