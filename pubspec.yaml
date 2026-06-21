@@ -22,19 +22,16 @@ dependencies:
 
   # Advanced Authentication (المصادقة المتقدمة)
   sign_in_with_apple: ^8.1.0
-  google_sign_in: ^7.2.0
-
-  # UI & Styling (التصميم والواجهات)
-  google_fonts: ^8.1.0
-  cached_network_image: ^3.3.1
-  shimmer: ^3.0.0
-  carousel_slider: ^5.1.2 
+  google_sign_in: ^7.2.0 
 
   # Utilities (الأدوات المساعدة)
   intl: ^0.20.2
   http: ^1.2.0
   image_picker: ^1.0.7
   riverpod: ^2.6.1
+  shimmer: ^3.0.0
+  carousel_slider: ^5.1.2
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

@@ -1,10 +1,8 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'main.dart';
 import 'views/home/home_screen.dart';
-// تم إزالة استيراد شاشة التحويل لتنظيف التطبيق تماماً
 import 'views/cards/cards_screen.dart';
 import 'views/profile/profile_screen.dart';
 import 'providers/auth_provider.dart';
@@ -21,7 +19,6 @@ class MainLayout extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
-    // تم إزالة شاشة التحويل والإبقاء على الألعاب والبطاقات فقط
     final tabs = [
       const HomeScreen(),
       const CardsScreen(),
@@ -45,7 +42,9 @@ class MainLayout extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: Icon(isDark ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded),
+            icon: Icon(isDark
+                ? Icons.wb_sunny_rounded
+                : Icons.nights_stay_rounded),
             onPressed: () {
               ref.read(themeModeProvider.notifier).state =
                   isDark ? ThemeMode.light : ThemeMode.dark;
@@ -54,7 +53,8 @@ class MainLayout extends ConsumerWidget {
           if (user == null)
             TextButton(
               onPressed: () => _showAuthModal(context, ref),
-              child: const Text('دخول', style: TextStyle(fontWeight: FontWeight.w800)),
+              child: const Text('دخول',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
             )
           else
             Padding(
@@ -72,15 +72,12 @@ class MainLayout extends ConsumerWidget {
         ],
       ),
       body: IndexedStack(
-        // تأمين عدم تجاوز الفهرس لعدد الشاشات المتاحة
         index: currentTab.clamp(0, tabs.length - 1),
         children: tabs,
       ),
       bottomNavigationBar: NavigationBar(
-        // تحديد العنصر النشط مع ضمان عدم تجاوزه للرقم 2 (لأن لدينا 3 أزرار كحد أقصى)
         selectedIndex: currentTab.clamp(0, 2),
         onDestinationSelected: (i) {
-          // إذا ضغط المستخدم على الزر الثالث (الفهرس 2) وهو غير مسجل للدخول
           if (i == 2 && user == null) {
             _showAuthModal(context, ref);
             return;
@@ -92,16 +89,22 @@ class MainLayout extends ConsumerWidget {
         destinations: [
           const NavigationDestination(
               icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: AppTheme.green),
+              selectedIcon:
+                  Icon(Icons.home_rounded, color: AppTheme.green),
               label: 'الرئيسية'),
           const NavigationDestination(
               icon: Icon(Icons.gamepad_outlined),
-              selectedIcon: Icon(Icons.gamepad_rounded, color: AppTheme.green),
+              selectedIcon:
+                  Icon(Icons.gamepad_rounded, color: AppTheme.green),
               label: 'البطاقات'),
           NavigationDestination(
-              icon: Icon(user != null ? Icons.person_outline : Icons.login_outlined),
+              icon: Icon(user != null
+                  ? Icons.person_outline
+                  : Icons.login_outlined),
               selectedIcon: Icon(
-                  user != null ? Icons.person_rounded : Icons.login_rounded,
+                  user != null
+                      ? Icons.person_rounded
+                      : Icons.login_rounded,
                   color: AppTheme.green),
               label: user != null ? 'حسابي' : 'دخول'),
         ],
@@ -119,7 +122,6 @@ class MainLayout extends ConsumerWidget {
   }
 }
 
-// ── Auth Modal ──
 class AuthModal extends ConsumerStatefulWidget {
   const AuthModal({super.key});
   @override
@@ -141,7 +143,8 @@ class _AuthModalState extends ConsumerState<AuthModal> {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -157,8 +160,6 @@ class _AuthModalState extends ConsumerState<AuthModal> {
               ),
             ),
             const SizedBox(height: 20),
-            
-            // --- تبويبات البريد الإلكتروني ---
             Row(
               children: [
                 Expanded(
@@ -197,7 +198,9 @@ class _AuthModalState extends ConsumerState<AuthModal> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: AppTheme.red, fontSize: 13)),
+              Text(_error!,
+                  style:
+                      const TextStyle(color: AppTheme.red, fontSize: 13)),
             ],
             const SizedBox(height: 20),
             ElevatedButton(
@@ -206,11 +209,11 @@ class _AuthModalState extends ConsumerState<AuthModal> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
                   : Text(_isLogin ? 'تسجيل الدخول' : 'إنشاء حساب'),
             ),
-            
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Row(
@@ -218,23 +221,29 @@ class _AuthModalState extends ConsumerState<AuthModal> {
                   Expanded(child: Divider()),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('أو', style: TextStyle(color: Colors.grey)),
+                    child: Text('أو',
+                        style: TextStyle(color: Colors.grey)),
                   ),
                   Expanded(child: Divider()),
                 ],
               ),
             ),
-
-            // --- زر Apple Sign In ---
+            // --- زر Google Sign In ---
             OutlinedButton.icon(
-              onPressed: _loading ? null : _submitApple,
-              icon: const Icon(Icons.apple, color: Colors.black, size: 24),
-              label: const Text('المتابعة باستخدام Apple', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w800)),
+              onPressed: _loading ? null : _submitGoogle,
+              icon: Image.network(
+                'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                width: 22,
+                height: 22,
+              ),
+              label: const Text('المتابعة باستخدام Google',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
               style: OutlinedButton.styleFrom(
                 backgroundColor: Colors.white,
-                side: const BorderSide(color: Colors.black, width: 1.5),
+                side: BorderSide(color: Colors.grey[300]!),
                 minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
             ),
             const SizedBox(height: 12),
@@ -249,38 +258,42 @@ class _AuthModalState extends ConsumerState<AuthModal> {
       setState(() => _error = 'يرجى إدخال البريد وكلمة المرور');
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     try {
-      final repo = ref.read(authRepositoryProvider); 
+      final repo = ref.read(authRepositoryProvider);
       if (_isLogin) {
-        await repo.signInWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
+        await repo.signInWithEmail(
+            _emailCtrl.text.trim(), _passCtrl.text.trim());
       } else {
-        await repo.registerWithEmail(_emailCtrl.text.trim(), _passCtrl.text.trim());
+        await repo.registerWithEmail(
+            _emailCtrl.text.trim(), _passCtrl.text.trim());
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() => _error = 'تأكد من صحة البيانات (كلمة المرور 6 أحرف على الأقل)');
+      setState(() =>
+          _error = 'تأكد من صحة البيانات (كلمة المرور 6 أحرف على الأقل)');
     }
 
-    if (mounted) {
-      setState(() => _loading = false);
-    }
+    if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _submitApple() async {
-    setState(() { _loading = true; _error = null; });
+  Future<void> _submitGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.signInWithApple();
+      await repo.signInWithGoogle();
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      setState(() => _error = 'لم يتم تفعيل Apple Sign-In بعد، أو حدث خطأ.');
+      setState(() => _error = 'حدث خطأ أثناء الدخول بحساب Google');
     }
-    
-    if (mounted) {
-      setState(() => _loading = false);
-    }
+    if (mounted) setState(() => _loading = false);
   }
 }
 
@@ -289,7 +302,10 @@ class _AuthTab extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
 
-  const _AuthTab({required this.label, required this.isActive, required this.onTap});
+  const _AuthTab(
+      {required this.label,
+      required this.isActive,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
