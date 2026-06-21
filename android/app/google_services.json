@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "350634992471",
+    "project_id": "hawwil2",
+    "storage_bucket": "hawwil2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350634992471:android:90fec3374163c0e7829412",
+        "android_client_info": {
+          "package_name": "com.example.hawwil_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "350634992471-uh1df50p1kl7c9mrc32mi24h07n6v4b6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlhLpqJHWyP7pHrZ7wyQw1pd7CRq5u_BQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "350634992471-uh1df50p1kl7c9mrc32mi24h07n6v4b6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "350634992471-b4m00ar1lt04qk7llisrefjpku6d4h4g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
