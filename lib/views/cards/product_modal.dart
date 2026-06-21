@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/bank_model.dart';
@@ -17,7 +19,6 @@ void showProductModal(BuildContext context, GameModel game) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    // تم حذف ProviderScope هنا لأنها تسبب انهيار التطبيق (Crash) في الإصدارات الجديدة
     builder: (ctx) => _ProductModal(game: game),
   );
 }
@@ -50,113 +51,145 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
   @override
   Widget build(BuildContext context) {
     final payBanksAsync = ref.watch(paymentBanksProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.92,
+      height: MediaQuery.of(context).size.height * 0.90,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)
+        ],
       ),
       child: Column(
         children: [
-          const SizedBox(height: 8),
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
+          // --- مؤشر السحب وزر الإغلاق ---
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(top: 12, bottom: 8, right: 16, left: 16),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const SizedBox(width: 40), // توازن المساحة
                 Container(
                   width: 50,
-                  height: 50,
+                  height: 5,
                   decoration: BoxDecoration(
-                    color: _parseColor(widget.game.bg) ?? AppTheme.greenLight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: widget.game.logo != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(widget.game.logo!, fit: BoxFit.cover),
-                        )
-                      : Center(
-                          child: Text(widget.game.icon ?? '🎮',
-                              style: const TextStyle(fontSize: 26))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.game.name,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w900)),
-                      const Text('اختر الكمية والمنطقة المناسبة',
-                          style: TextStyle(color: Colors.grey, fontSize: 12)),
-                    ],
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+
+          // --- الهيدر الفخم للمنتج ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 65,
+                  height: 65,
+                  decoration: BoxDecoration(
+                    color: _parseColor(widget.game.bg) ?? AppTheme.greenLight,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: widget.game.logo != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: widget.game.logo!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            errorWidget: (context, url, error) => const Icon(Icons.videogame_asset),
+                          ),
+                        )
+                      : Center(child: Text(widget.game.icon ?? '🎮', style: const TextStyle(fontSize: 32))),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.game.name,
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, height: 1.2),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.game.isService ? 'بطاقة رقمية فورية' : 'شحن مباشر للحساب',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 30),
+
+          // --- المحتوى القابل للتمرير ---
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ويدجت اختيار الباقات
                   PackageSelectorWidget(
                     game: widget.game,
                     onPackageSelected: (pkg) => setState(() => _selectedPkg = pkg),
                   ),
-                  const SizedBox(height: 20),
-                  const Text('🏦 اختر بنك الدفع',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 24),
+                  
+                  // اختيار بنك الدفع
+                  const Text('🏦 اختر بنك الدفع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
                   payBanksAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (_, __) => const Text('حدث خطأ في جلب البنوك', style: TextStyle(color: AppTheme.red)),
                     data: (banks) {
                       if (_selectedPayBank == null && banks.isNotEmpty) {
-                        WidgetsBinding.instance.addPostFrameCallback(
-                            (_) => setState(() => _selectedPayBank = banks.first));
+                        WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _selectedPayBank = banks.first));
                       }
                       return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: 12,
+                        runSpacing: 12,
                         children: banks.map((b) {
                           final isSelected = _selectedPayBank?.id == b.id;
                           return GestureDetector(
                             onTap: () => setState(() => _selectedPayBank = b),
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              duration: const Duration(milliseconds: 250),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppTheme.greenLight : Colors.white,
+                                color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.white),
                                 border: Border.all(
                                   color: isSelected ? AppTheme.green : Colors.grey[300]!,
-                                  width: isSelected ? 2 : 1,
+                                  width: 1.5,
                                 ),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: isSelected ? [BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
                               ),
                               child: Text(
                                 b.name,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: isSelected ? AppTheme.green : null,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.black87),
                                 ),
                               ),
                             ),
@@ -165,37 +198,93 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
                       );
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
+
+                  // الحقول ومعلومات الدفع
                   if (!widget.game.isService) ...[
                     TextField(
                       controller: _playerIdCtrl,
-                      decoration: const InputDecoration(labelText: 'معرّف اللاعب / الحساب *'),
+                      decoration: const InputDecoration(
+                        labelText: 'معرّف اللاعب (Player ID) *',
+                        prefixIcon: Icon(Icons.person_pin_rounded),
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                   ],
                   TextField(
                     controller: _phoneCtrl,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'رقم هاتفك للتأكيد *'),
+                    decoration: const InputDecoration(
+                      labelText: 'رقم هاتفك للتأكيد *',
+                      prefixIcon: Icon(Icons.phone_android_rounded),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  _buildPaymentNote(),
-                  const SizedBox(height: 16),
-                  _buildReceiptUploader(),
                   const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _submit,
-                    child: _loading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('✅ إرسال الطلب الآن'),
-                  ),
-                  const SizedBox(height: 16),
+                  _buildPaymentNote(),
+                  const SizedBox(height: 20),
+                  _buildReceiptUploader(),
+                  
+                  // مساحة إضافية لتجنب تغطية الزر السفلي للمحتوى
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 120),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+      
+      // --- الزر السفلي الثابت ---
+      bottomSheet: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.05), blurRadius: 10, offset: const Offset(0, -4))
+          ],
+        ),
+        child: SafeArea(
+          child: ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: _loading
+                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+                : const Text('إتمام الطلب', style: TextStyle(fontSize: 18)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentNote() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.greenLight.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.green.withOpacity(0.3), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'للطلب يرجى الدفع عبر ${_selectedPayBank?.name ?? '—'} للرقم:',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.greenDark, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              AppConstants.paymentNumber,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 2, color: AppTheme.green),
             ),
           ),
         ],
@@ -203,66 +292,61 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
     );
   }
 
-  Widget _buildPaymentNote() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.greenLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.green, width: 1.5),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'للطلب يرجى الدفع عبر ${_selectedPayBank?.name ?? '—'} للرقم:',
-            style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.green, fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 4),
-          const Text(AppConstants.paymentNumber,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 3)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildReceiptUploader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool hasImage = _receiptBase64 != null;
+
     return GestureDetector(
       onTap: _pickImage,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 300),
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: _receiptBase64 != null ? AppTheme.greenLight : Colors.white,
+          color: hasImage ? AppTheme.greenLight.withOpacity(0.3) : (isDark ? Colors.grey[900] : Colors.grey[50]),
           border: Border.all(
-            color: _receiptBase64 != null ? AppTheme.green : Colors.grey[300]!,
-            width: 1.5,
+            color: hasImage ? AppTheme.green : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            width: 2,
           ),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: _receiptBase64 != null
+        child: hasImage
             ? Column(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                     child: Image.memory(
                       base64Decode(_receiptBase64!.split(',').last),
-                      height: 130,
+                      height: 150,
+                      width: double.infinity,
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text('✅ تم الإرفاق — اضغط لتغييره',
-                      style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.w700, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: AppTheme.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('تم إرفاق الإيصال بنجاح (اضغط للتغيير)', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ],
               )
-            : const Column(
+            : Column(
                 children: [
-                  Icon(Icons.upload_file_rounded, size: 32, color: Colors.grey),
-                  SizedBox(height: 6),
-                  Text('اضغط لإرفاق وصل الدفع *',
-                      style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.green, fontSize: 13)),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.greenLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.cloud_upload_rounded, size: 32, color: AppTheme.green),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('إرفاق إيصال الدفع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  const Text('صورة لقطة الشاشة للتحويل البنكي', style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
       ),
@@ -283,15 +367,15 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
       return;
     }
     if (_selectedPkg == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ اختر باقة أولاً')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى اختيار الباقة')));
       return;
     }
     if (!widget.game.isService && _playerIdCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ أدخل معرف اللاعب')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى إدخال معرّف اللاعب')));
       return;
     }
     if (_phoneCtrl.text.isEmpty || _receiptBase64 == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ أدخل رقم هاتفك وأرفق الوصل')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى إدخال رقم الهاتف وإرفاق الإيصال')));
       return;
     }
 
@@ -329,12 +413,13 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✅ تم إرسال طلبك بنجاح!'),
+          content: Text('✅ تم إرسال طلبك بنجاح! سيتم معالجته قريباً.'),
           backgroundColor: AppTheme.green,
+          behavior: SnackBarBehavior.floating,
         ));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ حدث خطأ، حاول لاحقاً')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً')));
     }
 
     if (mounted) {

@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'main_layout.dart';
@@ -9,40 +10,56 @@ import 'main_layout.dart';
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 
 void main() async {
- WidgetsFlutterBinding.ensureInitialized();
+  // التأكد من تهيئة بيئة فلاتر قبل تشغيل أي شيء
+  WidgetsFlutterBinding.ensureInitialized();
 
- await Firebase.initializeApp(
-   options: DefaultFirebaseOptions.currentPlatform,
- );
+  // تهيئة فايربيز
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
- SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-   statusBarColor: Colors.transparent,
-   statusBarIconBrightness: Brightness.dark,
-   systemNavigationBarColor: Colors.white,
- ));
+  // جعل شريط الحالة (Status Bar) شفافاً ليأخذ لون التطبيق بشكل أنيق
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+    ),
+  );
 
- runApp(const ProviderScope(child: HawwilApp()));
+  // قفل اتجاه الشاشة على الوضع العمودي فقط للحفاظ على جمالية التصميم
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // تشغيل التطبيق مع Riverpod Scope
+  runApp(const ProviderScope(child: HawwilApp()));
 }
 
 class HawwilApp extends ConsumerWidget {
- const HawwilApp({super.key});
+  const HawwilApp({super.key});
 
- @override
- Widget build(BuildContext context, WidgetRef ref) {
-   final themeMode = ref.watch(themeModeProvider);
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
 
-   return MaterialApp(
-     title: 'حوّل',
-     debugShowCheckedModeBanner: false,
-     theme: AppTheme.lightTheme,
-     darkTheme: AppTheme.darkTheme,
-     themeMode: themeMode,
-     locale: const Locale('ar', 'MR'),
-     builder: (context, child) => Directionality(
-       textDirection: TextDirection.rtl,
-       child: child!,
-     ),
-     home: const MainLayout(),
-   );
- }
+    return MaterialApp(
+      title: 'Hawwil - حوّل',
+      debugShowCheckedModeBanner: false, // إخفاء شريط Debug المزعج
+      
+      // ربط الثيمات الاحترافية التي قمنا بإنشائها
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+      
+      // دعم اللغة العربية والاتجاه من اليمين لليسار بشكل مثالي
+      locale: const Locale('ar', 'MR'),
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child!,
+      ),
+      
+      // توجيه المستخدم إلى الهيكل الرئيسي (Main Layout)
+      home: const MainLayout(),
+    );
+  }
 }

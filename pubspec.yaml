@@ -1,51 +1,117 @@
-name: hawwil
-description: تطبيق حوّل للخدمات المالية والبطاقات الرقمية
-publish_to: 'none'
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-version: 1.0.0+1
+class AppTheme {
+  // ألوان Hawwil الأصلية (تم الاحتفاظ بها)
+  static const Color green = Color(0xFF0A7C4E);
+  static const Color greenDark = Color(0xFF065C3A);
+  static const Color greenLight = Color(0xFFE8F5EE);
+  static const Color gold = Color(0xFFD4A853);
+  static const Color red = Color(0xFFC0392B);
+  static const Color redLight = Color(0xFFFDEDEC);
+  
+  static const Color backgroundLight = Color(0xFFF5F7F6);
+  static const Color backgroundDark = Color(0xFF0D0D0D);
 
-environment:
-  sdk: '>=3.0.0 <4.0.0'
+  // ---------- Light Theme ----------
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: green,
+        brightness: Brightness.light,
+      ),
+      // تم استبدال خط Arial بخط Cairo الاحترافي
+      textTheme: GoogleFonts.cairoTextTheme().copyWith(
+        displayLarge: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A)),
+        titleLarge: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: const Color(0xFF1A1A1A)),
+        bodyLarge: GoogleFonts.cairo(color: const Color(0xFF1A1A1A), fontSize: 16),
+        bodyMedium: GoogleFonts.cairo(color: Colors.grey[700], fontSize: 14),
+      ),
+      scaffoldBackgroundColor: backgroundLight,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1A1A),
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: GoogleFonts.cairo(
+          color: const Color(0xFF1A1A1A), 
+          fontSize: 20, 
+          fontWeight: FontWeight.bold
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: Colors.white,
+        elevation: 6, // زيادة الظل ليعطي طابع Premium (3D effect)
+        shadowColor: Colors.black.withOpacity(0.06),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: backgroundLight,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFDDE8E3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFDDE8E3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: green, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: green,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(double.infinity, 52),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: GoogleFonts.cairo(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
 
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.6
-
-  # State Management (إدارة الحالة)
-  flutter_riverpod: ^2.6.1
-
-  # Firebase (قواعد البيانات والمصادقة الأساسية)
-  firebase_core: ^4.11.0
-  cloud_firestore: ^6.6.0
-  firebase_auth: ^6.5.3
-
-  # Advanced Authentication (المصادقة المتقدمة)
-  sign_in_with_apple: ^8.1.0
-  google_sign_in: ^7.2.0 
-
-  # Utilities (الأدوات المساعدة)
-  intl: ^0.20.2
-  http: ^1.2.0
-  image_picker: ^1.0.7
-  riverpod: ^2.6.1
-  shimmer: ^3.0.0
-  carousel_slider: ^5.1.2
-  cached_network_image: ^3.4.1
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.14.4
-
-flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "assets/images/logo.png"
-  min_sdk_android: 21
-
-flutter:
-  uses-material-design: true
-  assets:
-    - assets/images/
+  // ---------- Dark Theme ----------
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: green,
+        brightness: Brightness.dark,
+      ),
+      textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+      scaffoldBackgroundColor: backgroundDark,
+      appBarTheme: AppBarTheme(
+        backgroundColor: const Color(0xFF141414),
+        foregroundColor: const Color(0xFFFDFDFD),
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: GoogleFonts.cairo(
+          color: const Color(0xFFFDFDFD), 
+          fontSize: 20, 
+          fontWeight: FontWeight.bold
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: const Color(0xFF141414),
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    );
+  }
+}

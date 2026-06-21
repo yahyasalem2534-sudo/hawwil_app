@@ -1,223 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../models/game_model.dart';
 import '../../providers/data_providers.dart';
-import '../../widgets/game_card_widget.dart';
-import '../cards/product_modal.dart';
-import '../../services/firebase_service.dart'; // تم إضافة الاستدعاء الصحيح للفايربيس
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // جلب البيانات باستخدام المزودات المنفصلة التي قمت ببرمجتها
+    final slidersAsync = ref.watch(slidersProvider);
+    final gamesAsync = ref.watch(gameGamesProvider);
+    final servicesAsync = ref.watch(serviceGamesProvider);
 
     return Scaffold(
-      // تم تصحيح لون الخلفية هنا
-      backgroundColor: isDarkMode ? const Color(0xFF0D0D0D) : Colors.grey[50],
-      body: RefreshIndicator(
-        color: AppTheme.green,
-        onRefresh: () async {
-          ref.invalidate(slidersProvider);
-          ref.invalidate(gamesProvider);
-        },
-        child: CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-            // 1. السلايدر الاحترافي (Banner Carousel)
-            SliverToBoxAdapter(
-              child: _buildBannerCarousel(ref),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-            // 2. تتبع الطلبات (للبطاقات)
-            SliverToBoxAdapter(child: _buildOrderTracker(context, ref)),
-
-            // 3. عنوان قسم الألعاب والبطاقات
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.sports_esports, color: AppTheme.green),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'شحن الألعاب',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: isDarkMode ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                    TextButton(
-                      // تم تصحيح زر عرض الكل لتجنب أخطاء التوجيه
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('جميع البطاقات معروضة بالأسفل')),
-                        );
-                      },
-                      child: const Text('عرض الكل', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 4. شبكة الألعاب المتجاوبة
-            _buildGamesGrid(ref),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBannerCarousel(WidgetRef ref) {
-    final slidersAsync = ref.watch(slidersProvider);
-
-    return slidersAsync.when(
-      loading: () => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          height: 180,
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-      error: (e, _) => SizedBox(
-        height: 180,
-        child: Center(
-          child: Text(
-            'عذراً، تعذر تحميل العروض',
-            style: TextStyle(color: Colors.red[300], fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-      data: (images) {
-        if (images.isEmpty) return const SizedBox();
-
-        return CarouselSlider(
-          options: CarouselOptions(
-            height: 180.0,
-            autoPlay: true,
-            enlargeCenterPage: true,
-            aspectRatio: 16 / 9,
-            autoPlayCurve: Curves.fastOutSlowIn,
-            enableInfiniteScroll: true,
-            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-            viewportFraction: 0.92,
-          ),
-          items: images.map((imageUrl) {
-            return Builder(
-              builder: (BuildContext context) {
-                return Container(
-                  width: MediaQuery.of(context).size.width,
-                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(color: Colors.grey[200]),
-                      errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.grey),
-                    ),
-                  ),
-                );
-              },
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildOrderTracker(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
-        elevation: isDarkMode ? 0 : 2,
-        shadowColor: Colors.black12,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '🔍 تتبع حالة طلبك اللحظية',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      decoration: InputDecoration(
-                        hintText: 'مثال: CRD-12345',
-                        isDense: true,
-                        filled: true,
-                        fillColor: isDarkMode ? Colors.black12 : Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (controller.text.isNotEmpty) {
-                        _showOrderStatus(context, ref, controller.text.trim());
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(80, 48),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                    child: const Text('بحث', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+              const SizedBox(height: 10),
+              _buildSearchBar(context),
+              const SizedBox(height: 20),
+              
+              // قسم السلايدر مربوط بـ Firebase
+              _buildHeroSlider(context, slidersAsync),
+              
+              const SizedBox(height: 24),
+              _buildSectionTitle('الألعاب الأكثر طلباً', () {}),
+              // قسم الألعاب
+              _buildProductsSection(gamesAsync),
+              
+              const SizedBox(height: 24),
+              _buildSectionTitle('البطاقات الرقمية', () {}),
+              // قسم الخدمات/البطاقات
+              _buildProductsSection(servicesAsync),
+              
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -225,143 +50,282 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGamesGrid(WidgetRef ref) {
-    final gamesAsync = ref.watch(gamesProvider);
-
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      sliver: gamesAsync.when(
-        loading: () => SliverGrid(
-          delegate: SliverChildBuilderDelegate(
-            (_, __) => Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Container(),
-              ),
-            ),
-            childCount: 4,
-          ),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 220,
-            mainAxisExtent: 270,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
+  // --- شريط البحث ---
+  Widget _buildSearchBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: TextField(
+          decoration: InputDecoration(
+            hintText: 'ابحث عن لعبة أو بطاقة...',
+            hintStyle: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
+            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.green, size: 28),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
-        error: (e, _) => const SliverToBoxAdapter(
-          child: Center(child: Text('حدث خطأ في تحميل الألعاب')),
-        ),
-        data: (games) {
-          if (games.isEmpty) {
-            return const SliverToBoxAdapter(
-              child: Center(child: Text('لا توجد بطاقات حالياً')),
-            );
-          }
+      ),
+    );
+  }
 
-          return SliverGrid(
-            delegate: SliverChildBuilderDelegate(
-              (ctx, i) => GameCardWidget(
-                game: games[i],
-                onTap: () => showProductModal(ctx, games[i]),
-              ),
-              childCount: games.length, 
+  // --- السلايدر المربوط بـ Firebase ---
+  Widget _buildHeroSlider(BuildContext context, AsyncValue<List<String>> slidersAsync) {
+    return slidersAsync.when(
+      data: (urls) {
+        if (urls.isEmpty) {
+          // سلايدر افتراضي في حال لم تكن هناك صور في قاعدة البيانات
+          return _buildDefaultSliderItem(context, 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?q=80&w=1000');
+        }
+        return CarouselSlider(
+          options: CarouselOptions(
+            height: 180.0,
+            enlargeCenterPage: true,
+            autoPlay: true,
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+            viewportFraction: 0.9,
+          ),
+          items: urls.map((imageUrl) => _buildDefaultSliderItem(context, imageUrl)).toList(),
+        );
+      },
+      loading: () => _buildSliderShimmer(context),
+      error: (error, stack) => _buildDefaultSliderItem(context, 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1000'),
+    );
+  }
+
+  // تصميم عنصر السلايدر
+  Widget _buildDefaultSliderItem(BuildContext context, String imageUrl) {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))
+        ],
+        image: DecorationImage(
+          image: CachedNetworkImageProvider(imageUrl),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            bottom: 20, right: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('عروض Hawwil', style: TextStyle(color: AppTheme.gold, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('تسوق الآن', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+              ],
             ),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 220, 
-              mainAxisExtent: 270, 
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // تأثير التحميل للسلايدر
+  Widget _buildSliderShimmer(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+      child: Container(
+        height: 180.0,
+        margin: const EdgeInsets.symmetric(horizontal: 20.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
+  // --- عنوان القسم ---
+  Widget _buildSectionTitle(String title, VoidCallback onSeeAll) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          TextButton(
+            onPressed: onSeeAll,
+            child: const Text('عرض الكل', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- قسم المنتجات (ألعاب أو بطاقات) ---
+  Widget _buildProductsSection(AsyncValue<List<GameModel>> asyncGames) {
+    return asyncGames.when(
+      data: (items) {
+        if (items.isEmpty) {
+          return const SizedBox(
+            height: 150,
+            child: Center(child: Text('لا توجد منتجات حالياً', style: TextStyle(color: Colors.grey))),
+          );
+        }
+
+        return SizedBox(
+          height: 220,
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              
+              // حساب أقل سعر
+              double startingPrice = 0;
+              if (item.pkgs.isNotEmpty) {
+                startingPrice = item.pkgs.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+              }
+
+              final imageUrl = item.logo ?? item.icon ?? '';
+
+              return ProductCard(
+                game: item, // نمرر الكائن كاملاً لنستخدمه عند الضغط
+                startingPrice: startingPrice.toStringAsFixed(0),
+                imageUrl: imageUrl,
+              );
+            },
+          ),
+        );
+      },
+      loading: () => _buildProductsShimmer(context),
+      error: (error, stack) => const SizedBox(
+        height: 150, 
+        child: Center(child: Text('حدث خطأ في جلب البيانات', style: TextStyle(color: AppTheme.red)))
+      ),
+    );
+  }
+
+  // تأثير التحميل للمنتجات
+  Widget _buildProductsShimmer(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: 220,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        scrollDirection: Axis.horizontal,
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Shimmer.fromColors(
+            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            child: Container(
+              width: 150,
+              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             ),
           );
         },
       ),
     );
   }
-
-  void _showOrderStatus(BuildContext context, WidgetRef ref, String refNum) {
-    showDialog(
-      context: context,
-      builder: (_) => _OrderStatusDialog(orderRef: refNum, ref: ref),
-    );
-  }
 }
 
-class _OrderStatusDialog extends ConsumerWidget {
-  final String orderRef;
-  final WidgetRef ref;
+// --- بطاقة المنتج ---
+class ProductCard extends StatelessWidget {
+  final GameModel game;
+  final String startingPrice;
+  final String imageUrl;
 
-  const _OrderStatusDialog({required this.orderRef, required this.ref});
+  const ProductCard({
+    super.key,
+    required this.game,
+    required this.startingPrice,
+    required this.imageUrl,
+  });
 
   @override
-  Widget build(BuildContext ctx, WidgetRef r) {
-    // تم تصحيح استدعاء الفايربيس هنا ليعمل بشكل مباشر ومضمون
-    final svc = FirebaseService();
-
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('تتبع الطلب: $orderRef', style: const TextStyle(fontSize: 16)),
-      content: StreamBuilder<Map<String, dynamic>?>(
-        stream: svc.trackOrder(orderRef),
-        builder: (_, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 60,
-              child: Center(child: CircularProgressIndicator(color: AppTheme.green)),
-            );
-          }
-          if (!snap.hasData || snap.data == null) {
-            return const Text('❌ لم يتم العثور على الطلب',
-                style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold));
-          }
-          final data = snap.data!;
-          final status = data['status'];
-          if (status == 'done') {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('✅ تم اكتمال طلبك!',
-                    style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.w900, fontSize: 18)),
-                if (data['deliveredCode'] != null) ...[
-                  const SizedBox(height: 16),
-                  const Text('كود البطاقة:', style: TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.greenLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.green.withOpacity(0.5)),
-                    ),
-                    child: SelectableText(
-                      data['deliveredCode'],
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 20,
-                          color: AppTheme.greenDark,
-                          fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ],
-            );
-          } else if (status == 'rejected') {
-            return const Text('❌ تم رفض الطلب. يرجى التواصل مع الدعم.',
-                style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold));
-          }
-          return const Text('⏳ طلبك قيد المراجعة...',
-              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w900, fontSize: 16));
-        },
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('إغلاق', style: TextStyle(fontWeight: FontWeight.bold)),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            // TODO: فتح ProductModal وتمرير الكائن game
+            // showModalBottomSheet(context: context, builder: (_) => ProductModal(game: game));
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: imageUrl.isEmpty
+                      ? const Icon(Icons.videogame_asset, size: 50, color: Colors.grey)
+                      : CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.contain, // لحل مشكلة قص الصور
+                          placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: AppTheme.greenLight)),
+                          errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                        ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        game.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      Row(
+                        children: [
+                          const Text('يبدأ من: ', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                          Text(
+                            '$startingPrice أوقية',
+                            style: const TextStyle(color: AppTheme.green, fontWeight: FontWeight.w900, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../core/constants/app_constants.dart';
+
 import '../core/theme/app_theme.dart';
 import '../models/game_model.dart';
 
 class PackageSelectorWidget extends StatefulWidget {
   final GameModel game;
-  final ValueChanged<PackageModel?> onPackageSelected;
+  final ValueChanged<PackageModel> onPackageSelected;
 
   const PackageSelectorWidget({
     super.key,
@@ -20,247 +20,168 @@ class PackageSelectorWidget extends StatefulWidget {
 
 class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
   String? _selectedRegion;
-  PackageModel? _selectedPkg;
+  PackageModel? _selectedPackage;
+  
+  // تنسيق الأرقام لتبدو احترافية (مثال: 1,500)
+  final _fmt = NumberFormat('#,###', 'en_US');
 
-  @override
-  void initState() {
-    super.initState();
-    if (widget.game.isRegional) {
-      final regions = _getRegions();
-      if (regions.isNotEmpty) _selectedRegion = regions.first;
-    }
-  }
-
-  List<String> _getRegions() {
-    return widget.game.pkgs
-        .where((p) => p.region != null)
-        .map((p) => p.region!)
+  // استخراج قائمة المناطق الفريدة من الباقات
+  List<String> get _regions {
+    final regions = widget.game.pkgs
+        .map((p) => p.region)
+        .whereType<String>()
+        .where((r) => r.isNotEmpty)
         .toSet()
         .toList();
+    return regions;
   }
 
-  List<PackageModel> get _filteredPkgs {
-    if (_selectedRegion != null) {
-      return widget.game.pkgs
-          .where((p) => p.region == _selectedRegion)
-          .toList();
+  // فلترة الباقات بناءً على المنطقة المختارة (إذا وجدت)
+  List<PackageModel> get _currentPackages {
+    if (_selectedRegion != null && _selectedRegion!.isNotEmpty) {
+      return widget.game.pkgs.where((p) => p.region == _selectedRegion).toList();
     }
     return widget.game.pkgs;
   }
 
-  void _selectPkg(PackageModel pkg) {
-    setState(() => _selectedPkg = pkg);
-    widget.onPackageSelected(pkg);
+  @override
+  void initState() {
+    super.initState();
+    // تحديد أول منطقة كقيمة افتراضية إذا كانت اللعبة تدعم المناطق
+    final regions = _regions;
+    if (regions.isNotEmpty) {
+      _selectedRegion = regions.first;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final regions = _regions;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.game.isRegional) _buildRegionSelector(),
-        _buildPackageGrid(),
-        if (_selectedPkg != null) _buildPriceDisplay(),
+        // --- قسم اختيار المنطقة (يظهر فقط إذا كان هناك مناطق) ---
+        if (regions.isNotEmpty) ...[
+          const Text('🌍 اختر المنطقة (Region)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: regions.map((region) {
+                final isSelected = _selectedRegion == region;
+                return Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedRegion = region;
+                        _selectedPackage = null; // إعادة تعيين الباقة عند تغيير المنطقة
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: isSelected 
+                            ? [BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+                            : [],
+                      ),
+                      child: Text(
+                        region,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.black87),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // --- قسم اختيار الباقة (Grid) ---
+        const Text('💎 اختر الباقة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 12),
+        
+        if (_currentPackages.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('لا توجد باقات متاحة لهذه المنطقة حالياً.', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _currentPackages.map((pkg) {
+              final isSelected = _selectedPackage == pkg;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedPackage = pkg);
+                  widget.onPackageSelected(pkg); // إرسال الباقة المختارة للصفحة الأب
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: (MediaQuery.of(context).size.width - 52) / 2, // عرض نصف الشاشة مع مراعاة المسافات
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? AppTheme.greenLight.withOpacity(isDark ? 0.1 : 0.5) 
+                        : Theme.of(context).cardColor,
+                    border: Border.all(
+                      color: isSelected ? AppTheme.green : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
+                      width: isSelected ? 2 : 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: isSelected 
+                        ? [BoxShadow(color: AppTheme.green.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))] 
+                        : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // الكمية (Amount)
+                      Text(
+                        pkg.amount,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // السعر (Price)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${_fmt.format(pkg.price)} أوقية',
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : AppTheme.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
-    );
-  }
-
-  Widget _buildRegionSelector() {
-    final regions = _getRegions();
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: regions.map((r) {
-          final isActive = r == _selectedRegion;
-          return Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: OutlinedButton(
-                onPressed: () => setState(() {
-                  _selectedRegion = r;
-                  _selectedPkg = null;
-                  widget.onPackageSelected(null);
-                }),
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: isActive ? AppTheme.greenLight : null,
-                  foregroundColor: isActive ? AppTheme.green : Colors.grey,
-                  side: BorderSide(
-                    color: isActive ? AppTheme.green : Colors.grey[300]!,
-                  ),
-                  shape: const StadiumBorder(),
-                ),
-                child: Text(
-                  AppConstants.regionNames[r] ?? r,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildPackageGrid() {
-    final pkgs = _filteredPkgs;
-    if (pkgs.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text('لا توجد باقات', style: TextStyle(color: Colors.grey)),
-        ),
-      );
-    }
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.9,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: pkgs.length,
-      itemBuilder: (_, i) => _PkgTab(
-        pkg: pkgs[i],
-        isSelected: _selectedPkg == pkgs[i],
-        onTap: () => _selectPkg(pkgs[i]),
-      ),
-    );
-  }
-
-  Widget _buildPriceDisplay() {
-    final fmt = NumberFormat('#,###', 'ar');
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Center(
-        child: RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: fmt.format(_selectedPkg!.price),
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.green,
-                ),
-              ),
-              const TextSpan(
-                text: ' أوقية موريتانية',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PkgTab extends StatelessWidget {
-  final PackageModel pkg;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PkgTab({
-    required this.pkg,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fmt = NumberFormat('#,###', 'ar');
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-      transform: Matrix4.identity()..scale(isSelected ? 1.04 : 1.0),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? const LinearGradient(
-                    colors: [AppTheme.greenDark, AppTheme.green],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : Theme.of(context).cardColor,
-            border: Border.all(
-              color: isSelected ? Colors.transparent : Colors.grey[300]!,
-              width: 1.5,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppTheme.green.withOpacity(0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Stack(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    pkg.amount,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      color: isSelected ? Colors.white : null,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${fmt.format(pkg.price)} أوقية',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: isSelected
-                          ? Colors.white.withOpacity(0.9)
-                          : Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              if (isSelected)
-                Positioned(
-                  bottom: 2,
-                  left: 2,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check,
-                        size: 10, color: AppTheme.green),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
