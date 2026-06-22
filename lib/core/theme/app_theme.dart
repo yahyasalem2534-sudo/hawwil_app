@@ -12,27 +12,36 @@ class AppTheme {
   static const Color backgroundLight = Color(0xFFF5F7F6);
   static const Color backgroundDark = Color(0xFF0D0D0D);
 
+  // --- جميع الأسماء البديلة التي تطلبها واجهات التطبيق ---
+  static const Color primaryColor = green;
+  static const Color surfaceColor = Colors.white;
+  static const Color errorColor = red;
+  static const Color successColor = green;
+  static const Color backgroundColor = backgroundLight;
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF616161);
+  // --------------------------------------------------------
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(seedColor: green, brightness: Brightness.light),
       textTheme: GoogleFonts.cairoTextTheme().copyWith(
-        displayLarge: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: const Color(0xFF1A1A1A)),
-        titleLarge: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: const Color(0xFF1A1A1A)),
-        bodyLarge: GoogleFonts.cairo(color: const Color(0xFF1A1A1A), fontSize: 16),
-        bodyMedium: GoogleFonts.cairo(color: Colors.grey[700], fontSize: 14),
+        displayLarge: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: textPrimary),
+        titleLarge: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: textPrimary),
+        bodyLarge: GoogleFonts.cairo(color: textPrimary, fontSize: 16),
+        bodyMedium: GoogleFonts.cairo(color: textSecondary, fontSize: 14),
       ),
       scaffoldBackgroundColor: backgroundLight,
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: surfaceColor,
+        foregroundColor: textPrimary,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.cairo(color: const Color(0xFF1A1A1A), fontSize: 20, fontWeight: FontWeight.bold),
+        titleTextStyle: GoogleFonts.cairo(color: textPrimary, fontSize: 20, fontWeight: FontWeight.bold),
       ),
-      // التعديل هنا: CardThemeData بدلاً من CardTheme
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: surfaceColor,
         elevation: 6,
         shadowColor: Colors.black.withOpacity(0.06),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -76,7 +85,6 @@ class AppTheme {
         centerTitle: true,
         titleTextStyle: GoogleFonts.cairo(color: const Color(0xFFFDFDFD), fontSize: 20, fontWeight: FontWeight.bold),
       ),
-      // التعديل هنا: CardThemeData بدلاً من CardTheme
       cardTheme: CardThemeData(
         color: const Color(0xFF141414),
         elevation: 4,
