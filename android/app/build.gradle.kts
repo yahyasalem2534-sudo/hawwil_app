@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.hawwil_app"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         applicationId = "com.example.hawwil_app"
         minSdk = 23
-        targetSdk = 34 
+        targetSdk = 36 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true 
@@ -26,7 +26,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
-            // تم إضافة حرفي is لتتوافق مع لغة الكوتلن
             isMinifyEnabled = false 
             isShrinkResources = false
         }
