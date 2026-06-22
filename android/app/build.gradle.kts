@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.hawwil_app"
-    compileSdk = 36 // 👈 تثبيت إجباري على 36
+    compileSdk = 34
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -16,15 +16,18 @@ android {
 
     defaultConfig {
         applicationId = "com.example.hawwil_app"
-        minSdk = flutter.minSdkVersion
-        targetSdk = 36 // 👈 تثبيت إجباري على 36
+        minSdk = 23
+        targetSdk = 34 
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true 
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            minifyEnabled = false 
+            shrinkResources = false
         }
     }
 }
@@ -37,4 +40,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
 }
