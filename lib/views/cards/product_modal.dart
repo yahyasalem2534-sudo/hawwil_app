@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +19,13 @@ void showProductModal(BuildContext context, GameModel game) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
+    backgroundColor: Colors.transparent, // Required for Glassmorphism
+    barrierColor: Colors.black.withOpacity(0.7), // Deeper barrier color
+    transitionAnimationController: AnimationController(
+      vsync: Navigator.of(context).overlay!,
+      duration: const Duration(milliseconds: 600),
+      reverseDuration: const Duration(milliseconds: 400),
+    ),
     builder: (ctx) => _ProductModal(game: game),
   );
 }
@@ -36,7 +43,7 @@ class _ProductModal extends ConsumerStatefulWidget {
   ConsumerState<_ProductModal> createState() => _ProductModalState();
 }
 
-class _ProductModalState extends ConsumerState<_ProductModal> {
+class _ProductModalState extends ConsumerState<_ProductModal> with SingleTickerProviderStateMixin {
   PackageModel? _selectedPkg;
   BankModel? _selectedPayBank;
   final _playerIdCtrl = TextEditingController();
@@ -44,215 +51,215 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
   String? _receiptBase64;
   bool _loading = false;
 
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
   final _fmt = NumberFormat('#,###', 'ar');
+
+  @override
+  void initState() {
+    super.initState();
+    // Animation for the "Checkout" button to make it feel alive
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
 
   @override
   void dispose() {
     _playerIdCtrl.dispose();
     _phoneCtrl.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final payBanksAsync = ref.watch(paymentBanksProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gameColor = _parseColor(widget.game.bg) ?? AppTheme.primaryColor;
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.90,
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)
-        ],
-      ),
-      child: Column(
-        children: [
-          // --- مؤشر السحب وزر الإغلاق ---
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8, right: 16, left: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 40),
-                Container(
-                  width: 50,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded),
-                  style: IconButton.styleFrom(
-                    backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                  ),
-                ),
-              ],
-            ),
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // Deep Glassmorphism effect
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.92, // Slightly taller
+        decoration: BoxDecoration(
+          // Gradient background using the game's theme color mixed with dark theme
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              gameColor.withOpacity(0.15),
+              AppTheme.backgroundColor,
+              AppTheme.backgroundColor,
+            ],
+            stops: const [0.0, 0.3, 1.0],
           ),
-
-          // --- الهيدر الفخم للمنتج ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 65,
-                  height: 65,
-                  decoration: BoxDecoration(
-                    color: _parseColor(widget.game.bg) ?? AppTheme.greenLight,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: widget.game.logo != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
-                            imageUrl: widget.game.logo!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                            errorWidget: (context, url, error) => const Icon(Icons.videogame_asset),
-                          ),
-                        )
-                      : Center(child: Text(widget.game.icon ?? '🎮', style: const TextStyle(fontSize: 32))),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.game.name,
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, height: 1.2),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.game.isService ? 'بطاقة رقمية فورية' : 'شحن مباشر للحساب',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          border: Border(
+            top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1.5),
           ),
-          
-          const Divider(height: 30),
+        ),
+        child: Column(
+          children: [
+            // --- Drag Indicator ---
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 60,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
 
-          // --- المحتوى القابل للتمرير ---
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PackageSelectorWidget(
-                    game: widget.game,
-                    onPackageSelected: (pkg) => setState(() => _selectedPkg = pkg),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  const Text('🏦 اختر بنك الدفع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 12),
-                  payBanksAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const Text('حدث خطأ في جلب البنوك', style: TextStyle(color: AppTheme.red)),
-                    data: (banks) {
-                      if (_selectedPayBank == null && banks.isNotEmpty) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _selectedPayBank = banks.first));
-                      }
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: banks.map((b) {
-                          final isSelected = _selectedPayBank?.id == b.id;
-                          return GestureDetector(
-                            onTap: () => setState(() => _selectedPayBank = b),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.white),
-                                border: Border.all(
-                                  color: isSelected ? AppTheme.green : Colors.grey[300]!,
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: isSelected ? [BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
-                              ),
-                              child: Text(
-                                b.name,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.black87),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
+            // --- Premium Header ---
+            _buildPremiumHeader(gameColor),
+            
+            const SizedBox(height: 10),
+            Divider(color: Colors.white.withOpacity(0.05), height: 1),
 
-                  if (!widget.game.isService) ...[
-                    TextField(
-                      controller: _playerIdCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'معرّف اللاعب (Player ID) *',
-                        prefixIcon: Icon(Icons.person_pin_rounded),
-                      ),
+            // --- Scrollable Content ---
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 100), // Extra bottom padding
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Packages Selection
+                    PackageSelectorWidget(
+                      game: widget.game,
+                      onPackageSelected: (pkg) => setState(() => _selectedPkg = pkg),
                     ),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Bank Selection
+                    _buildSectionTitle('طريقة الدفع', Icons.account_balance_wallet_rounded),
                     const SizedBox(height: 16),
-                  ],
-                  TextField(
-                    controller: _phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم هاتفك للتأكيد *',
-                      prefixIcon: Icon(Icons.phone_android_rounded),
+                    _buildBankSelector(payBanksAsync),
+                    
+                    const SizedBox(height: 32),
+
+                    // Inputs Section
+                    _buildSectionTitle('بيانات الطلب', Icons.info_outline_rounded),
+                    const SizedBox(height: 16),
+                    
+                    if (!widget.game.isService) ...[
+                      _buildPremiumTextField(
+                        controller: _playerIdCtrl,
+                        label: 'معرّف اللاعب (Player ID)',
+                        icon: Icons.tag_rounded,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    _buildPremiumTextField(
+                      controller: _phoneCtrl,
+                      label: 'رقم هاتفك للتأكيد',
+                      icon: Icons.phone_iphone_rounded,
+                      keyboardType: TextInputType.phone,
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildPaymentNote(),
-                  const SizedBox(height: 20),
-                  _buildReceiptUploader(),
-                  
-                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 40),
-                ],
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Payment Instructions & Receipt
+                    _buildPaymentInstructions(),
+                    const SizedBox(height: 24),
+                    _buildReceiptUploader(),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // --- الزر السفلي الثابت ---
+            // --- Pulsing Floating Checkout Button ---
+            _buildFloatingCheckoutButton(gameColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumHeader(Color gameColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        children: [
+          // Logo with Glow Effect
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(isDark ? 0.4 : 0.05), blurRadius: 10, offset: const Offset(0, -4))
+                BoxShadow(
+                  color: gameColor.withOpacity(0.4),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                )
               ],
             ),
-            child: SafeArea(
-              child: ElevatedButton(
-                onPressed: _loading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: widget.game.logo != null
+                  ? CachedNetworkImage(
+                      imageUrl: widget.game.logo!,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(color: AppTheme.surfaceColor),
+                      errorWidget: (context, url, error) => Container(
+                        color: AppTheme.surfaceColor,
+                        child: const Icon(Icons.videogame_asset, color: Colors.white54),
+                      ),
+                    )
+                  : Container(
+                      color: gameColor,
+                      child: Center(child: Text(widget.game.icon ?? '🎮', style: const TextStyle(fontSize: 40))),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.game.name,
+                  style: const TextStyle(
+                    fontSize: 26, 
+                    fontWeight: FontWeight.w900, 
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-                child: _loading
-                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
-                    : const Text('إتمام الطلب', style: TextStyle(fontSize: 18)),
-              ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Text(
+                    widget.game.isService ? 'بطاقة رقمية فورية' : 'شحن مباشر للحساب',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Elegant Close Button
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32, color: Colors.white),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.05),
+              padding: const EdgeInsets.all(12),
             ),
           ),
         ],
@@ -260,32 +267,145 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
     );
   }
 
-  Widget _buildPaymentNote() {
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryColor, size: 22),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBankSelector(AsyncValue<List<BankModel>> payBanksAsync) {
+    return payBanksAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+      error: (_, __) => const Text('حدث خطأ', style: TextStyle(color: Colors.redAccent)),
+      data: (banks) {
+        if (_selectedPayBank == null && banks.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _selectedPayBank = banks.first));
+        }
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: banks.map((b) {
+            final isSelected = _selectedPayBank?.id == b.id;
+            return GestureDetector(
+              onTap: () => setState(() => _selectedPayBank = b),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryColor.withOpacity(0.2) : AppTheme.surfaceColor,
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.05),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected 
+                    ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] 
+                    : [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      color: isSelected ? AppTheme.primaryColor : Colors.grey[600],
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      b.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: isSelected ? Colors.white : Colors.grey[400],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+        prefixIcon: Icon(icon, color: Colors.grey[400]),
+        filled: true,
+        fillColor: AppTheme.surfaceColor,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentInstructions() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppTheme.greenLight.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.green.withOpacity(0.3), width: 1.5),
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryColor.withOpacity(0.2), AppTheme.primaryColor.withOpacity(0.05)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
       ),
       child: Column(
         children: [
+          const Icon(Icons.info_rounded, color: AppTheme.primaryColor, size: 28),
+          const SizedBox(height: 12),
           Text(
-            'للطلب يرجى الدفع عبر ${_selectedPayBank?.name ?? '—'} للرقم:',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.greenDark, fontSize: 14),
+            'قم بتحويل المبلغ عبر ${_selectedPayBank?.name ?? '—'} إلى الرقم:',
+            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: const Text(
               AppConstants.paymentNumber,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 2, color: AppTheme.green),
+              style: TextStyle(
+                fontSize: 28, 
+                fontWeight: FontWeight.w900, 
+                letterSpacing: 4, 
+                color: AppTheme.primaryColor,
+              ),
             ),
           ),
         ],
@@ -294,7 +414,6 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
   }
 
   Widget _buildReceiptUploader() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool hasImage = _receiptBase64 != null;
 
     return GestureDetector(
@@ -302,54 +421,111 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: hasImage ? AppTheme.greenLight.withOpacity(0.3) : (isDark ? Colors.grey[900] : Colors.grey[50]),
+          color: hasImage ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.surfaceColor,
           border: Border.all(
-            color: hasImage ? AppTheme.green : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            color: hasImage ? AppTheme.primaryColor : Colors.white.withOpacity(0.05),
             width: 2,
+            style: BorderStyle.solid,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: hasImage
             ? Column(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     child: Image.memory(
                       base64Decode(_receiptBase64!.split(',').last),
-                      height: 150,
+                      height: 160,
                       width: double.infinity,
                       fit: BoxFit.cover,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_rounded, color: AppTheme.green, size: 20),
-                      SizedBox(width: 8),
-                      Text('تم إرفاق الإيصال بنجاح (اضغط للتغيير)', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.bold)),
-                    ],
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 18),
+                        SizedBox(width: 8),
+                        Text('تم إرفاق الإيصال (اضغط للتغيير)', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
                   ),
                 ],
               )
             : Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.greenLight,
+                      color: Colors.white.withOpacity(0.05),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.cloud_upload_rounded, size: 32, color: AppTheme.green),
+                    child: const Icon(Icons.cloud_upload_outlined, size: 36, color: Colors.grey),
                   ),
-                  const SizedBox(height: 12),
-                  const Text('إرفاق إيصال الدفع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  const SizedBox(height: 4),
-                  const Text('صورة لقطة الشاشة للتحويل البنكي', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(height: 16),
+                  const Text('إرفاق صورة التحويل البنكي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 6),
+                  Text('اضغط هنا لاختيار لقطة الشاشة', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingCheckoutButton(Color gameColor) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32), // Safe area + padding
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppTheme.backgroundColor.withOpacity(0.0),
+            AppTheme.backgroundColor.withOpacity(0.9),
+            AppTheme.backgroundColor,
+          ],
+        ),
+      ),
+      child: ScaleTransition(
+        scale: _pulseAnimation,
+        child: ElevatedButton(
+          onPressed: _loading ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 64), // Taller button
+            elevation: 10,
+            shadowColor: AppTheme.primaryColor.withOpacity(0.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          child: _loading
+              ? const SizedBox(height: 28, width: 28, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('إتمام الطلب الآن', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    const SizedBox(width: 12),
+                    if (_selectedPkg != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                        child: Text(
+                          '${_fmt.format(_selectedPkg!.price)} أوقية',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -364,19 +540,19 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
   Future<void> _submit() async {
     final user = ref.read(currentUserProvider);
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى تسجيل الدخول أولاً')));
+      _showCustomSnackBar('يرجى تسجيل الدخول أولاً لإتمام الطلب', Icons.lock_outline_rounded);
       return;
     }
     if (_selectedPkg == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى اختيار الباقة')));
+      _showCustomSnackBar('يرجى اختيار الباقة التي تريد شرائها', Icons.shopping_cart_outlined);
       return;
     }
     if (!widget.game.isService && _playerIdCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى إدخال معرّف اللاعب')));
+      _showCustomSnackBar('يرجى إدخال معرّف اللاعب (Player ID)', Icons.person_outline_rounded);
       return;
     }
     if (_phoneCtrl.text.isEmpty || _receiptBase64 == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ يرجى إدخال رقم الهاتف وإرفاق الإيصال')));
+      _showCustomSnackBar('يرجى إدخال رقم الهاتف وإرفاق صورة الإيصال', Icons.warning_amber_rounded);
       return;
     }
 
@@ -413,19 +589,34 @@ class _ProductModalState extends ConsumerState<_ProductModal> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('✅ تم إرسال طلبك بنجاح! سيتم معالجته قريباً.'),
-          backgroundColor: AppTheme.green,
-          behavior: SnackBarBehavior.floating,
-        ));
+        _showCustomSnackBar('تم استلام طلبك بنجاح! سيتم التنفيذ قريباً 🚀', Icons.check_circle_rounded, isSuccess: true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً')));
+      _showCustomSnackBar('حدث خطأ أثناء المعالجة، يرجى المحاولة لاحقاً', Icons.error_outline_rounded);
     }
 
     if (mounted) {
       setState(() => _loading = false);
     }
+  }
+
+  void _showCustomSnackBar(String message, IconData icon, {bool isSuccess = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Cairo'))),
+          ],
+        ),
+        backgroundColor: isSuccess ? AppTheme.primaryColor : const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   Color? _parseColor(String? hex) {

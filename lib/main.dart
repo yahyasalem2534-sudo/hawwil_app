@@ -5,7 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
-import 'main_layout.dart';
+// تم استبدال استدعاء main_layout بشاشة الترحيب الجديدة
+import 'views/splash_screen.dart'; 
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 
@@ -13,7 +14,7 @@ void main() async {
   // التأكد من تهيئة بيئة فلاتر قبل تشغيل أي شيء
   WidgetsFlutterBinding.ensureInitialized();
 
-  // تهيئة فايربيز
+  // تهيئة فايربيز (بدون أي تعديل)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -46,7 +47,7 @@ class HawwilApp extends ConsumerWidget {
       title: 'Hawwil - حوّل',
       debugShowCheckedModeBanner: false, // إخفاء شريط Debug المزعج
       
-      // ربط الثيمات الاحترافية التي قمنا بإنشائها
+      // ربط الثيمات الاحترافية
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
@@ -58,8 +59,8 @@ class HawwilApp extends ConsumerWidget {
         child: child!,
       ),
       
-      // توجيه المستخدم إلى الهيكل الرئيسي (Main Layout)
-      home: const MainLayout(),
+      // توجيه المستخدم إلى شاشة الترحيب الاحترافية أولاً
+      home: const SplashScreen(),
     );
   }
 }

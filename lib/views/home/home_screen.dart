@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'dart:ui'; // لعمل تأثيرات Blur (Glassmorphism)
 
 import '../../core/theme/app_theme.dart';
 import '../../models/game_model.dart';
@@ -25,21 +26,26 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               _buildSearchBar(context),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               
+              // السلايدر الاحترافي
               _buildHeroSlider(context, slidersAsync),
               
-              const SizedBox(height: 24),
-              _buildSectionTitle('الألعاب الأكثر طلباً', () {}),
+              const SizedBox(height: 32),
+              
+              // قسم الألعاب
+              _buildSectionTitle('الألعاب الأكثر طلباً'),
               _buildProductsSection(context, gamesAsync),
               
-              const SizedBox(height: 24),
-              _buildSectionTitle('البطاقات الرقمية', () {}),
+              const SizedBox(height: 32),
+              
+              // قسم البطاقات الرقمية
+              _buildSectionTitle('البطاقات الرقمية'),
               _buildProductsSection(context, servicesAsync),
               
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -49,25 +55,27 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildSearchBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5)),
           ],
         ),
         child: TextField(
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'ابحث عن لعبة أو بطاقة...',
-            hintStyle: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
-            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.green, size: 28),
+            hintStyle: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryColor, size: 28),
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
             fillColor: Colors.transparent,
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(vertical: 18),
           ),
         ),
       ),
@@ -78,15 +86,18 @@ class HomeScreen extends ConsumerWidget {
     return slidersAsync.when(
       data: (urls) {
         if (urls.isEmpty) {
+          // صورة افتراضية في حال عدم وجود صور
           return _buildDefaultSliderItem(context, 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?q=80&w=1000');
         }
         return CarouselSlider(
           options: CarouselOptions(
-            height: 180.0,
+            aspectRatio: 16 / 9, // نسبة عرض إلى ارتفاع قياسية واحترافية
             enlargeCenterPage: true,
             autoPlay: true,
-            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-            viewportFraction: 0.9,
+            autoPlayInterval: const Duration(seconds: 4),
+            autoPlayAnimationDuration: const Duration(milliseconds: 1000),
+            autoPlayCurve: Curves.fastOutSlowIn,
+            viewportFraction: 0.92,
           ),
           items: urls.map((imageUrl) => _buildDefaultSliderItem(context, imageUrl)).toList(),
         );
@@ -98,29 +109,50 @@ class HomeScreen extends ConsumerWidget {
 
   Widget _buildDefaultSliderItem(BuildContext context, String imageUrl) {
     return Container(
-      width: MediaQuery.of(context).size.width,
+      width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 5.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))
+          BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
         ],
         image: DecorationImage(
           image: CachedNetworkImageProvider(imageUrl),
           fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
+          // طبقة داكنة لضمان وضوح الزر
+          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken),
         ),
       ),
       child: Stack(
+        alignment: Alignment.bottomCenter, // محاذاة كل شيء في الأسفل والمنتصف
         children: [
+          // زر "تسوق الآن" في وسط أسفل السلايدر
           Positioned(
-            bottom: 20, right: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('عروض Hawwil', style: TextStyle(color: AppTheme.gold, fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('تسوق الآن', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-              ],
+            bottom: 20,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text(
+                        'تسوق الآن',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -129,33 +161,35 @@ class HomeScreen extends ConsumerWidget {
   }
 
   Widget _buildSliderShimmer(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+      baseColor: const Color(0xFF1E293B), // يتناسب مع اللون الداكن
+      highlightColor: const Color(0xFF334155),
       child: Container(
-        height: 180.0,
         margin: const EdgeInsets.symmetric(horizontal: 20.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title, VoidCallback onSeeAll) {
+  Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          TextButton(
-            onPressed: onSeeAll,
-            child: const Text('عرض الكل', style: TextStyle(color: AppTheme.green, fontWeight: FontWeight.w800)),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+      child: Text(
+        title, 
+        style: const TextStyle(
+          color: AppTheme.textPrimary, 
+          fontSize: 22, 
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -166,14 +200,14 @@ class HomeScreen extends ConsumerWidget {
         if (items.isEmpty) {
           return const SizedBox(
             height: 150,
-            child: Center(child: Text('لا توجد منتجات حالياً', style: TextStyle(color: Colors.grey))),
+            child: Center(child: Text('لا توجد منتجات حالياً', style: TextStyle(color: AppTheme.textSecondary))),
           );
         }
 
         return SizedBox(
-          height: 220,
+          height: 240, // زيادة الارتفاع ليتناسب مع التصميم الجديد للبطاقة
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             itemCount: items.length,
@@ -199,27 +233,26 @@ class HomeScreen extends ConsumerWidget {
       loading: () => _buildProductsShimmer(context),
       error: (error, stack) => const SizedBox(
         height: 150, 
-        child: Center(child: Text('حدث خطأ في جلب البيانات', style: TextStyle(color: AppTheme.red)))
+        child: Center(child: Text('حدث خطأ في جلب البيانات', style: TextStyle(color: Colors.redAccent)))
       ),
     );
   }
 
   Widget _buildProductsShimmer(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
-      height: 220,
+      height: 240,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: 4,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            baseColor: const Color(0xFF1E293B),
+            highlightColor: const Color(0xFF334155),
             child: Container(
-              width: 150,
-              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+              width: 160,
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
             ),
           );
         },
@@ -228,6 +261,9 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+// ============================================================================
+// تصميم بطاقة المنتج (Premium Dark Card)
+// ============================================================================
 class ProductCard extends StatelessWidget {
   final GameModel game;
   final String startingPrice;
@@ -243,53 +279,60 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
-      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      width: 160,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          highlightColor: AppTheme.primaryColor.withOpacity(0.1),
+          splashColor: AppTheme.primaryColor.withOpacity(0.2),
           onTap: () {
             showModalBottomSheet(
               context: context, 
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
-              builder: (_) => _ProductModalBridge(game: game) // الجسر لتفادي الأخطاء
+              builder: (_) => _ProductModalBridge(game: game) 
             );
           },
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // قسم الصورة (يملأ الجزء العلوي)
               Expanded(
-                flex: 3,
+                flex: 5,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9), // خلفية بيضاء خفيفة لإبراز لوجو اللعبة
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                  child: imageUrl.isEmpty
-                      ? const Icon(Icons.videogame_asset, size: 50, color: Colors.grey)
-                      : CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.contain,
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: AppTheme.greenLight)),
-                          errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: imageUrl.isEmpty
+                        ? const Icon(Icons.videogame_asset, size: 50, color: Colors.grey)
+                        : CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+                            errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                          ),
+                  ),
                 ),
               ),
+              // قسم التفاصيل (داكن وأنيق)
               Expanded(
-                flex: 2,
+                flex: 4,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -298,14 +341,16 @@ class ProductCard extends StatelessWidget {
                         game.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                       ),
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('يبدأ من: ', style: TextStyle(color: Colors.grey, fontSize: 10)),
+                          Text('تبدأ من', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                          const SizedBox(height: 2),
                           Text(
                             '$startingPrice أوقية',
-                            style: const TextStyle(color: AppTheme.green, fontWeight: FontWeight.w900, fontSize: 14),
+                            style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w900, fontSize: 15),
                           ),
                         ],
                       ),

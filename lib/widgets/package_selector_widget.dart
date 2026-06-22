@@ -22,21 +22,20 @@ class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
   String? _selectedRegion;
   PackageModel? _selectedPackage;
   
-  // تنسيق الأرقام لتبدو احترافية (مثال: 1,500)
+  // تنسيق الأرقام لتبدو احترافية
   final _fmt = NumberFormat('#,###', 'en_US');
 
   // استخراج قائمة المناطق الفريدة من الباقات
   List<String> get _regions {
-    final regions = widget.game.pkgs
+    return widget.game.pkgs
         .map((p) => p.region)
         .whereType<String>()
         .where((r) => r.isNotEmpty)
         .toSet()
         .toList();
-    return regions;
   }
 
-  // فلترة الباقات بناءً على المنطقة المختارة (إذا وجدت)
+  // فلترة الباقات بناءً على المنطقة المختارة
   List<PackageModel> get _currentPackages {
     if (_selectedRegion != null && _selectedRegion!.isNotEmpty) {
       return widget.game.pkgs.where((p) => p.region == _selectedRegion).toList();
@@ -47,7 +46,6 @@ class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
   @override
   void initState() {
     super.initState();
-    // تحديد أول منطقة كقيمة افتراضية إذا كانت اللعبة تدعم المناطق
     final regions = _regions;
     if (regions.isNotEmpty) {
       _selectedRegion = regions.first;
@@ -57,45 +55,58 @@ class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
   @override
   Widget build(BuildContext context) {
     final regions = _regions;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- قسم اختيار المنطقة (يظهر فقط إذا كان هناك مناطق) ---
+        // --- قسم اختيار المنطقة (Regions) ---
         if (regions.isNotEmpty) ...[
-          const Text('🌍 اختر المنطقة (Region)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 12),
+          _buildSectionHeader('المنطقة المخصصة', Icons.public_rounded),
+          const SizedBox(height: 16),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.none, // للسماح للظلال بالظهور خارج الحواف
             child: Row(
               children: regions.map((region) {
                 final isSelected = _selectedRegion == region;
                 return Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
+                  padding: const EdgeInsets.only(left: 12.0),
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
                         _selectedRegion = region;
-                        _selectedPackage = null; // إعادة تعيين الباقة عند تغيير المنطقة
+                        _selectedPackage = null; 
                       });
                     },
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.grey[200]),
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: isSelected 
+                            ? LinearGradient(
+                                colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.7)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: isSelected ? null : AppTheme.surfaceColor.withOpacity(0.5),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.05),
+                          width: 1.5,
+                        ),
+                        borderRadius: BorderRadius.circular(30),
                         boxShadow: isSelected 
-                            ? [BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+                            ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))] 
                             : [],
                       ),
                       child: Text(
                         region,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.black87),
-                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : Colors.grey[400],
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          letterSpacing: 1,
                         ),
                       ),
                     ),
@@ -104,74 +115,105 @@ class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
               }).toList(),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
         ],
 
-        // --- قسم اختيار الباقة (Grid) ---
-        const Text('💎 اختر الباقة', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 12),
+        // --- قسم اختيار الباقة (Glowing Cards Grid) ---
+        _buildSectionHeader('باقات الشحن', Icons.diamond_outlined),
+        const SizedBox(height: 16),
         
         if (_currentPackages.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('لا توجد باقات متاحة لهذه المنطقة حالياً.', style: TextStyle(color: Colors.grey)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: const Center(
+              child: Text('لا توجد باقات متاحة لهذه المنطقة حالياً', style: TextStyle(color: Colors.grey)),
+            ),
           )
         else
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: 16,
+            runSpacing: 16,
             children: _currentPackages.map((pkg) {
               final isSelected = _selectedPackage == pkg;
+              // حساب العرض ليأخذ نصف الشاشة مع مراعاة الحواف (Padding = 24*2 = 48) والمسافة بين الكروت (16)
+              final cardWidth = (MediaQuery.of(context).size.width - 64) / 2;
               
               return GestureDetector(
                 onTap: () {
                   setState(() => _selectedPackage = pkg);
-                  widget.onPackageSelected(pkg); // إرسال الباقة المختارة للصفحة الأب
+                  widget.onPackageSelected(pkg);
                 },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: (MediaQuery.of(context).size.width - 52) / 2, // عرض نصف الشاشة مع مراعاة المسافات
-                  padding: const EdgeInsets.all(16),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  width: cardWidth,
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
                   decoration: BoxDecoration(
-                    color: isSelected 
-                        ? AppTheme.greenLight.withOpacity(isDark ? 0.1 : 0.5) 
-                        : Theme.of(context).cardColor,
+                    color: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.surfaceColor,
                     border: Border.all(
-                      color: isSelected ? AppTheme.green : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
-                      width: isSelected ? 2 : 1.5,
+                      color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.03),
+                      width: isSelected ? 2 : 1,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: isSelected 
-                        ? [BoxShadow(color: AppTheme.green.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))] 
-                        : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+                        ? [
+                            BoxShadow(color: AppTheme.primaryColor.withOpacity(0.3), blurRadius: 20, spreadRadius: -5),
+                            BoxShadow(color: AppTheme.primaryColor.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
+                          ] 
+                        : [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))],
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // الكمية (Amount)
-                      Text(
-                        pkg.amount,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
+                      // الأيقونة والكمية
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            widget.game.isService ? Icons.card_giftcard_rounded : Icons.diamond_rounded, 
+                            color: isSelected ? AppTheme.primaryColor : Colors.white54, 
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              pkg.amount,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                                color: isSelected ? Colors.white : Colors.grey[300],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      // السعر (Price)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      const SizedBox(height: 12),
+                      
+                      // السعر داخل كبسولة أنيقة
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.green : (isDark ? Colors.grey[800] : Colors.grey[100]),
-                          borderRadius: BorderRadius.circular(8),
+                          gradient: isSelected 
+                              ? LinearGradient(colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)])
+                              : null,
+                          color: isSelected ? null : Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${_fmt.format(pkg.price)} أوقية',
                           style: TextStyle(
-                            color: isSelected ? Colors.white : AppTheme.green,
+                            color: isSelected ? Colors.white : AppTheme.primaryColor,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -181,6 +223,25 @@ class _PackageSelectorWidgetState extends State<PackageSelectorWidget> {
               );
             }).toList(),
           ),
+      ],
+    );
+  }
+
+  // عنوان القسم (مكرر بلمسة فخمة)
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryColor, size: 22),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18, 
+            fontWeight: FontWeight.w900, 
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
       ],
     );
   }

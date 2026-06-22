@@ -1,45 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme/app_theme.dart';
 import '../main.dart';
 import '../views/home/home_screen.dart';
-import '../views/cards/cards_screen.dart';
-import '../views/profile/profile_screen.dart';
 import '../providers/auth_provider.dart';
-
-final currentTabProvider = StateProvider<int>((ref) => 0);
 
 class MainLayout extends ConsumerWidget {
   const MainLayout({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentTab = ref.watch(currentTabProvider);
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
 
-    // تم إضافة 3 شاشات لتتناسب مع الـ Bottom Navigation
-    final tabs = [
-      const HomeScreen(),
-      const CardsScreen(),
-      if (user != null) const ProfileScreen() else const SizedBox.shrink(),
-    ];
-
     return Scaffold(
-      // --- القائمة الجانبية الاحترافية (Drawer) ---
-      drawer: _buildDrawer(context, ref, user),
-      
+      // AppBar احترافي ونظيف
       appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu_rounded, size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -48,182 +26,99 @@ class MainLayout extends ConsumerWidget {
               child: Image.asset('assets/images/logo.png', width: 32, height: 32, fit: BoxFit.cover),
             ),
             const SizedBox(width: 10),
-            const Text('حوّل', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
+            const Text('HAWWIL', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: 1.5)),
           ],
         ),
         actions: [
+          // زر تبديل الوضع (Dark/Light)
           IconButton(
             icon: Icon(isDark ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded),
             onPressed: () {
               ref.read(themeModeProvider.notifier).state = isDark ? ThemeMode.light : ThemeMode.dark;
             },
           ),
+          
+          // قائمة الثلاث نقاط الاحترافية (⋮)
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, size: 28),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            position: PopupMenuPosition.under,
+            elevation: 8,
+            onSelected: (value) {
+              _handleMenuSelection(value, context, ref);
+            },
+            itemBuilder: (BuildContext context) => [
+              if (user == null)
+                const PopupMenuItem(
+                  value: 'login',
+                  child: Row(
+                    children: [
+                      Icon(Icons.login_rounded, size: 20),
+                      SizedBox(width: 12),
+                      Text('تسجيل الدخول', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              if (user != null)
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: AppTheme.primaryColor,
+                        backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                        child: user.photoURL == null ? const Icon(Icons.person, size: 16, color: Colors.white) : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(user.displayName ?? 'حسابي', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'about', child: Text('من نحن')),
+              const PopupMenuItem(value: 'privacy', child: Text('سياسة الخصوصية')),
+              const PopupMenuItem(value: 'terms', child: Text('الشروط والأحكام')),
+              const PopupMenuItem(value: 'contact', child: Text('تواصل معنا')),
+              if (user != null) const PopupMenuDivider(),
+              if (user != null)
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
+                      SizedBox(width: 12),
+                      Text('تسجيل الخروج', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(width: 8),
         ],
       ),
       
-      body: IndexedStack(
-        index: currentTab.clamp(0, tabs.length - 1),
-        children: tabs,
-      ),
-
-      // --- شريط التنقل السفلي الحديث (GNav) ---
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 20,
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-            )
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 12),
-            child: GNav(
-              rippleColor: AppTheme.greenLight,
-              hoverColor: AppTheme.greenLight.withOpacity(0.5),
-              gap: 8,
-              activeColor: AppTheme.green,
-              iconSize: 26,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: isDark ? AppTheme.greenDark.withOpacity(0.2) : AppTheme.greenLight,
-              color: isDark ? Colors.grey[400]! : Colors.grey[600]!,
-              tabs: [
-                const GButton(
-                  icon: Icons.home_rounded,
-                  text: 'الرئيسية',
-                ),
-                const GButton(
-                  icon: Icons.gamepad_rounded,
-                  text: 'البطاقات',
-                ),
-                GButton(
-                  icon: user != null ? Icons.person_rounded : Icons.login_rounded,
-                  text: user != null ? 'حسابي' : 'دخول',
-                ),
-              ],
-              selectedIndex: currentTab.clamp(0, 2),
-              onTabChange: (index) {
-                if (index == 2 && user == null) {
-                  _showAuthModal(context, ref);
-                  return;
-                }
-                ref.read(currentTabProvider.notifier).state = index;
-              },
-            ),
-          ),
-        ),
-      ),
+      // الصفحة الرئيسية الوحيدة
+      body: const HomeScreen(),
     );
   }
 
-  // تصميم القائمة الجانبية (Drawer)
-  Widget _buildDrawer(BuildContext context, WidgetRef ref, dynamic user) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return Drawer(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: isDark ? AppTheme.backgroundDark : Colors.white),
-            margin: EdgeInsets.zero,
-            accountName: Text(
-              user != null ? (user.displayName ?? 'مستخدم حوّل') : 'مرحباً بك في حوّل',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            accountEmail: Text(
-              user?.email ?? 'سجل دخولك للاستمتاع بخدماتنا',
-              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
-            ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: AppTheme.greenLight,
-              backgroundImage: user?.photoURL != null ? NetworkImage(user.photoURL!) : null,
-              child: user?.photoURL == null
-                  ? const Icon(Icons.person, size: 40, color: AppTheme.green)
-                  : null,
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(top: 8),
-              children: [
-                if (user != null) ...[
-                  _buildDrawerItem(icon: Icons.person_outline, title: 'حسابي', onTap: () {
-                    Navigator.pop(context);
-                    ref.read(currentTabProvider.notifier).state = 2;
-                  }),
-                  _buildDrawerItem(icon: Icons.shopping_bag_outlined, title: 'طلباتي', onTap: () {}),
-                  const Divider(indent: 20, endIndent: 20),
-                ],
-                _buildDrawerItem(icon: Icons.help_outline, title: 'مركز المساعدة', onTap: () {}),
-                _buildDrawerItem(icon: Icons.privacy_tip_outlined, title: 'سياسة الخصوصية', onTap: () {}),
-                _buildDrawerItem(icon: Icons.description_outlined, title: 'الشروط والأحكام', onTap: () {}),
-                _buildDrawerItem(icon: Icons.info_outline, title: 'حول تطبيق حوّل', onTap: () {}),
-                const Divider(indent: 20, endIndent: 20),
-                _buildDrawerItem(icon: Icons.support_agent_rounded, title: 'تواصل معنا', onTap: () {}),
-              ],
-            ),
-          ),
-          if (user != null) ...[
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                tileColor: AppTheme.redLight,
-                leading: const Icon(Icons.delete_forever_rounded, color: AppTheme.red),
-                title: const Text('حذف الحساب', style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold)),
-                onTap: () {
-                  // TODO: إضافة منطق حذف الحساب
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24.0, right: 16, left: 16),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                  foregroundColor: isDark ? Colors.white : Colors.black87,
-                ),
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('تسجيل الخروج'),
-                onPressed: () {
-                  ref.read(authRepositoryProvider).signOut();
-                  Navigator.pop(context);
-                },
-              ),
-            )
-          ] else ...[
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showAuthModal(context, ref);
-                },
-                child: const Text('تسجيل الدخول'),
-              ),
-            )
-          ]
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem({required IconData icon, required String title, required VoidCallback onTap}) {
-    return ListTile(
-      leading: Icon(icon, size: 26),
-      title: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-      onTap: onTap,
-    );
+  void _handleMenuSelection(String value, BuildContext context, WidgetRef ref) {
+    switch (value) {
+      case 'login':
+        _showAuthModal(context, ref);
+        break;
+      case 'logout':
+        ref.read(authRepositoryProvider).signOut();
+        break;
+      // يمكنك لاحقاً إضافة Navigation لباقي الصفحات (من نحن، الشروط، إلخ) هنا
+      case 'about':
+      case 'privacy':
+      case 'terms':
+      case 'contact':
+        // TODO: Navigate to respective screens
+        break;
+    }
   }
 
   void _showAuthModal(BuildContext context, WidgetRef ref) {
@@ -236,6 +131,9 @@ class MainLayout extends ConsumerWidget {
   }
 }
 
+// ============================================================================
+// AuthModal - تم الاحتفاظ بالمنطق البرمجي مع تحسين المظهر ليكون Premium
+// ============================================================================
 class AuthModal extends ConsumerStatefulWidget {
   const AuthModal({super.key});
   @override
@@ -258,10 +156,10 @@ class _AuthModalState extends ConsumerState<AuthModal> {
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)
+          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, spreadRadius: 5)
         ]
       ),
       child: SingleChildScrollView(
@@ -272,31 +170,30 @@ class _AuthModalState extends ConsumerState<AuthModal> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 50,
-                height: 5,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[400],
+                  color: Colors.grey[600],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
               const SizedBox(height: 30),
               
-              // زر Google Barz ومميز
+              // زر Google الفخم
               OutlinedButton.icon(
                 onPressed: _loading ? null : _submitGoogle,
                 icon: Image.network(
                   'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                  width: 26,
-                  height: 26,
+                  width: 24,
+                  height: 24,
                 ),
                 label: const Text('المتابعة باستخدام Google', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+                  backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                   foregroundColor: isDark ? Colors.white : Colors.black87,
-                  side: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!, width: 1.5),
+                  side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!, width: 1.5),
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
                 ),
               ),
               
@@ -304,12 +201,12 @@ class _AuthModalState extends ConsumerState<AuthModal> {
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Row(
                   children: [
-                    Expanded(child: Divider()),
+                    Expanded(child: Divider(thickness: 0.5)),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('أو باستخدام البريد', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                      child: Text('أو باستخدام البريد', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     ),
-                    Expanded(child: Divider()),
+                    Expanded(child: Divider(thickness: 0.5)),
                   ],
                 ),
               ),
@@ -324,28 +221,39 @@ class _AuthModalState extends ConsumerState<AuthModal> {
               TextField(
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)),
+                decoration: InputDecoration(
+                  labelText: 'البريد الإلكتروني', 
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'كلمة المرور', prefixIcon: Icon(Icons.lock_outline)),
+                decoration: InputDecoration(
+                  labelText: 'كلمة المرور', 
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: AppTheme.red, fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w600)),
               ],
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _loading ? null : _submitEmail,
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
                 ),
                 child: _loading
                     ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white))
-                    : Text(_isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد', style: const TextStyle(fontSize: 18)),
+                    : Text(_isLogin ? 'تسجيل الدخول' : 'إنشاء حساب جديد', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 16),
             ],
@@ -405,7 +313,7 @@ class _AuthTab extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isActive ? AppTheme.green : Colors.transparent,
+              color: isActive ? AppTheme.primaryColor : Colors.transparent,
               width: 3,
             ),
           ),
@@ -416,7 +324,7 @@ class _AuthTab extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: isActive ? AppTheme.green : Colors.grey[500],
+            color: isActive ? AppTheme.primaryColor : Colors.grey[500],
           ),
         ),
       ),
