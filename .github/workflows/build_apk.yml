@@ -27,10 +27,12 @@ jobs:
       run: flutter pub get
 
     - name: Build APK
-      run: flutter build apk --debug --verbose
+      # تم التعديل هنا لبناء نسخة نهائية بدلاً من نسخة التطوير
+      run: flutter build apk --release
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Hawwil-App-Release
-        path: build/app/outputs/flutter-apk/app-release.apk
+        # تم التعديل هنا لالتقاط أي ملف APK بنجاح
+        path: build/app/outputs/**/*.apk
