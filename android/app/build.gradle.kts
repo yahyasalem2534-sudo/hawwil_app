@@ -26,8 +26,9 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
-            minifyEnabled = false 
-            shrinkResources = false
+            // تم إضافة حرفي is لتتوافق مع لغة الكوتلن
+            isMinifyEnabled = false 
+            isShrinkResources = false
         }
     }
 }
