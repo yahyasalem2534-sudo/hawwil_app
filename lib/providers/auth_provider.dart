@@ -1,33 +1,79 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../services/firebase_service.dart';
 
-final firebaseServiceProvider = Provider<FirebaseService>((ref) => FirebaseService());
-final authStateProvider = StreamProvider<User?>((ref) => ref.watch(firebaseServiceProvider).authStateChanges);
-final currentUserProvider = Provider<User?>((ref) => ref.watch(authStateProvider).valueOrNull);
-final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository(ref.watch(firebaseServiceProvider)));
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+}
 
-class AuthRepository {
-  final FirebaseService _svc;
-  AuthRepository(this._svc);
+class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  // الحل الأضمن والأحدث الذي يعمل على الويب والموبايل معاً
   Future<void> signInWithGoogle() async {
     try {
-      final googleProvider = GoogleAuthProvider();
-      
-      // على الويب، هذه الدالة تفتح نافذة منبثقة، وعلى الموبايل قد تطلب إعدادات إضافية
-      // لكنها الطريقة المعيارية الجديدة من Firebase
-      await FirebaseAuth.instance.signInWithPopup(googleProvider);
-      
-    } catch (e) {
-      print('خطأ أثناء تسجيل الدخول بواسطة Google: $e');
-      // إذا فشل الـ Popup، يمكن تجربة الـ Redirect كبديل
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) throw AuthException('تم إلغاء تسجيل الدخول');
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      await _auth.signInWithCredential(credential);
+    } on AuthException {
       rethrow;
+    } catch (_) {
+      throw AuthException('فشل تسجيل الدخول بـ Google');
     }
   }
 
-  Future<void> signInWithEmail(String email, String password) => _svc.signInWithEmail(email, password);
-  Future<void> registerWithEmail(String email, String password) => _svc.registerWithEmail(email, password);
-  Future<void> signOut() => _svc.signOut();
+  Future<void> signInWithEmail(String email, String password) async {
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapError(e.code));
+    }
+  }
+
+  Future<void> registerWithEmail(String email, String password) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapError(e.code));
+    }
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_mapError(e.code));
+    }
+  }
+
+  String _mapError(String code) {
+    switch (code) {
+      case 'user-not-found':       return 'البريد الإلكتروني غير مسجل';
+      case 'wrong-password':       return 'كلمة المرور غير صحيحة';
+      case 'email-already-in-use': return 'البريد الإلكتروني مستخدم بالفعل';
+      case 'weak-password':        return 'كلمة المرور ضعيفة جداً';
+      case 'invalid-email':        return 'صيغة البريد الإلكتروني غير صحيحة';
+      case 'too-many-requests':    return 'محاولات كثيرة، حاول لاحقاً';
+      default:                     return 'حدث خطأ، حاول مجدداً';
+    }
+  }
 }
+
+final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+
+final firebaseServiceProvider = Provider<FirebaseService>((ref) => FirebaseService());
+
+final authStateProvider = StreamProvider<User?>((ref) {
+  return ref.watch(firebaseServiceProvider).authStateChanges;
+});
+
+final currentUserProvider = Provider<User?>((ref) {
+  return ref.watch(authStateProvider).value;
+});

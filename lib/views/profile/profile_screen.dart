@@ -11,14 +11,16 @@ import '../../providers/data_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends ConsumerState<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   List<TransferOrder> _transfers = [];
-  List<CardOrder> _cards = [];
+  List<CardOrder>     _cards     = [];
   bool _loading = true;
   final _fmt = NumberFormat('#,###', 'ar');
 
@@ -29,20 +31,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     _loadOrders();
   }
 
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadOrders() async {
     setState(() => _loading = true);
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) { setState(() => _loading = false); return; }
 
-    final svc = ref.read(firebaseServiceProvider);
+    final svc       = ref.read(firebaseServiceProvider);
     final transfers = await svc.getUserTransfers(user.uid);
-    final cards = await svc.getUserCards(user.uid);
+    final cards     = await svc.getUserCards(user.uid);
 
     if (mounted) {
       setState(() {
         _transfers = transfers;
-        _cards = cards;
-        _loading = false;
+        _cards     = cards;
+        _loading   = false;
       });
     }
   }
@@ -50,213 +58,321 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('حسابي'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            onPressed: () async {
-              await ref.read(firebaseServiceProvider).signOut();
-            },
-            icon: const Icon(Icons.logout_rounded, color: AppTheme.red),
-            tooltip: 'تسجيل الخروج',
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          // --- بطاقة معلومات المستخدم (Profile Header) ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.green, AppTheme.greenDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))
-                ],
-              ),
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+
+            // ── هيدر الصفحة ───────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
+                  const Text(
+                    'حسابي',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        (user?.email ?? 'U')[0].toUpperCase(),
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppTheme.green),
-                      ),
+                      fontFamily: 'Cairo',
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'مرحباً بك،',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                        Text(
-                          user?.email ?? 'مستخدم غير معروف',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                  const Spacer(),
+                  // زر تسجيل الخروج
+                  GestureDetector(
+                    onTap: () async => ref.read(firebaseServiceProvider).signOut(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.25)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'خروج',
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontFamily: 'Cairo',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 10),
+            const SizedBox(height: 16),
 
-          // --- التبويبات (TabBar) ---
-          TabBar(
-            controller: _tabCtrl,
-            labelColor: AppTheme.green,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: AppTheme.green,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            tabs: const [
-              Tab(icon: Icon(Icons.gamepad_rounded), text: 'طلبات البطاقات'),
-              Tab(icon: Icon(Icons.swap_horiz_rounded), text: 'التحويلات المالية'),
-            ],
-          ),
-
-          // --- محتوى الطلبات (TabBarView) ---
-          Expanded(
-            child: _loading
-                ? _buildShimmerLoading()
-                : TabBarView(
-                    controller: _tabCtrl,
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      _buildCardsList(isDark),
-                      _buildTransfersList(isDark),
+            // ── بطاقة المستخدم ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor.withOpacity(0.8),
+                      AppTheme.primaryColor.withOpacity(0.4),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-          ),
-        ],
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.25),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // أفاتار
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          (user?.email ?? 'U')[0].toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primaryColor,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'مرحباً بك،',
+                            style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Cairo'),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            user?.email ?? 'مستخدم',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Cairo',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // إحصائية سريعة
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${_cards.length + _transfers.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
+                        const Text(
+                          'طلب',
+                          style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Cairo'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── شريط التبويبات ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: TabBar(
+                  controller: _tabCtrl,
+                  indicator: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: AppTheme.textSecondary,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Cairo',
+                    fontSize: 13,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Cairo',
+                    fontSize: 13,
+                  ),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(text: '🎮  البطاقات والألعاب'),
+                    Tab(text: '💸  التحويلات'),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── قائمة الطلبات ─────────────────────────────────────────────
+            Expanded(
+              child: _loading
+                  ? _buildShimmer()
+                  : TabBarView(
+                      controller: _tabCtrl,
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        _buildCardsList(),
+                        _buildTransfersList(),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // --- تأثير التحميل ---
-  Widget _buildShimmerLoading() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  // ── Shimmer ────────────────────────────────────────────────────────────
+  Widget _buildShimmer() {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: 4,
       itemBuilder: (_, __) => Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
+        padding: const EdgeInsets.only(bottom: 14),
         child: Shimmer.fromColors(
-          baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-          highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+          baseColor: const Color(0xFF1E293B),
+          highlightColor: const Color(0xFF334155),
           child: Container(
-            height: 120,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            height: 110,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // --- قائمة البطاقات ---
-  Widget _buildCardsList(bool isDark) {
+  // ── قائمة البطاقات ─────────────────────────────────────────────────────
+  Widget _buildCardsList() {
     if (_cards.isEmpty) {
-      return _buildEmptyState('لا توجد طلبات بطاقات أو ألعاب حتى الآن.', Icons.sports_esports_rounded);
+      return _buildEmptyState('لا توجد طلبات بطاقات حتى الآن', Icons.sports_esports_rounded);
     }
     return RefreshIndicator(
       onRefresh: _loadOrders,
-      color: AppTheme.green,
+      color: AppTheme.primaryColor,
+      backgroundColor: AppTheme.surfaceColor,
       child: ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         itemCount: _cards.length,
-        itemBuilder: (_, i) => _CardOrderWidget(order: _cards[i], fmt: _fmt, isDark: isDark),
+        itemBuilder: (_, i) => _CardOrderTile(order: _cards[i], fmt: _fmt),
       ),
     );
   }
 
-  // --- قائمة التحويلات ---
-  Widget _buildTransfersList(bool isDark) {
+  // ── قائمة التحويلات ────────────────────────────────────────────────────
+  Widget _buildTransfersList() {
     if (_transfers.isEmpty) {
-      return _buildEmptyState('لا توجد عمليات تحويل مالي حتى الآن.', Icons.account_balance_wallet_rounded);
+      return _buildEmptyState('لا توجد تحويلات مالية حتى الآن', Icons.account_balance_wallet_rounded);
     }
     return RefreshIndicator(
       onRefresh: _loadOrders,
-      color: AppTheme.green,
+      color: AppTheme.primaryColor,
+      backgroundColor: AppTheme.surfaceColor,
       child: ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         itemCount: _transfers.length,
-        itemBuilder: (_, i) => _TransferCardWidget(order: _transfers[i], fmt: _fmt, isDark: isDark),
+        itemBuilder: (_, i) => _TransferTile(order: _transfers[i], fmt: _fmt),
       ),
     );
   }
 
-  Widget _buildEmptyState(String message, IconData icon) {
+  Widget _buildEmptyState(String msg, IconData icon) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(color: AppTheme.greenLight.withOpacity(0.5), shape: BoxShape.circle),
-            child: Icon(icon, size: 64, color: AppTheme.green),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 56, color: AppTheme.primaryColor),
           ),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.bold)),
+          Text(
+            msg,
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontFamily: 'Cairo',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ==========================================
-// تصميم بطاقة طلب (الألعاب/البطاقات)
-// ==========================================
-class _CardOrderWidget extends StatelessWidget {
+// ============================================================================
+// بطاقة طلب (ألعاب / بطاقات)
+// ============================================================================
+class _CardOrderTile extends StatelessWidget {
   final CardOrder order;
   final NumberFormat fmt;
-  final bool isDark;
-
-  const _CardOrderWidget({required this.order, required this.fmt, required this.isDark});
+  const _CardOrderTile({required this.order, required this.fmt});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Padding(
@@ -264,98 +380,154 @@ class _CardOrderWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // الهيدر (رقم الطلب والحالة)
+            // رأس البطاقة
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.receipt_long_rounded, size: 18, color: Colors.grey),
-                    const SizedBox(width: 6),
+                    Icon(Icons.receipt_long_rounded, size: 14, color: AppTheme.textSecondary),
+                    const SizedBox(width: 5),
                     Text(
                       order.ref,
-                      style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w900, color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 _StatusBadge(status: order.status),
               ],
             ),
-            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
-            
+
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(color: Colors.white.withOpacity(0.06), height: 1),
+            ),
+
             // تفاصيل المنتج
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: isDark ? Colors.grey[800] : Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.gamepad_rounded, color: AppTheme.green),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.gamepad_rounded, color: AppTheme.primaryColor, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.game, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(order.package, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                      Text(
+                        order.game,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        order.package,
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontFamily: 'Cairo'),
+                      ),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('السعر', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    Text('${fmt.format(order.price)} أوقية', style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.green)),
+                    Text('السعر', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontFamily: 'Cairo')),
+                    Text(
+                      '${fmt.format(order.price)} أوقية',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primaryColor,
+                        fontFamily: 'Cairo',
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
 
-            // كود الشحن (يظهر فقط إذا كان الطلب مكتمل ويوجد كود)
-            if (order.status == 'done' && order.deliveredCode != null && order.deliveredCode!.isNotEmpty) ...[
-              const SizedBox(height: 16),
+            // كود الشحن (إن وُجد)
+            if (order.status == 'done' &&
+                order.deliveredCode != null &&
+                order.deliveredCode!.isNotEmpty) ...[
+              const SizedBox(height: 14),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppTheme.greenLight.withOpacity(isDark ? 0.1 : 0.6),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                  color: AppTheme.primaryColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.25)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.vpn_key_rounded, size: 16, color: AppTheme.green),
-                        SizedBox(width: 6),
-                        Text('كود الشحن الخاص بك:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.greenDark)),
+                        const Icon(Icons.vpn_key_rounded, size: 14, color: AppTheme.primaryColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'كود الشحن الخاص بك',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryColor,
+                            fontFamily: 'Cairo',
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: SelectableText(
                             order.deliveredCode!,
-                            style: const TextStyle(fontFamily: 'monospace', fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1),
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 1.5,
+                            ),
                           ),
                         ),
                         ElevatedButton.icon(
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: order.deliveredCode!));
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('📋 تم نسخ الكود بنجاح!'), backgroundColor: AppTheme.green, behavior: SnackBarBehavior.floating),
+                              SnackBar(
+                                content: const Text('تم نسخ الكود!', style: TextStyle(fontFamily: 'Cairo')),
+                                backgroundColor: AppTheme.primaryColor,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: const EdgeInsets.all(16),
+                                duration: const Duration(seconds: 2),
+                              ),
                             );
                           },
-                          icon: const Icon(Icons.copy_rounded, size: 16),
-                          label: const Text('نسخ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.copy_rounded, size: 14),
+                          label: const Text('نسخ', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12)),
                           style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(80, 36),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(72, 34),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
                           ),
                         ),
                       ],
@@ -371,25 +543,24 @@ class _CardOrderWidget extends StatelessWidget {
   }
 }
 
-// ==========================================
-// تصميم بطاقة التحويل المالي
-// ==========================================
-class _TransferCardWidget extends StatelessWidget {
+// ============================================================================
+// بطاقة التحويل المالي
+// ============================================================================
+class _TransferTile extends StatelessWidget {
   final TransferOrder order;
   final NumberFormat fmt;
-  final bool isDark;
-
-  const _TransferCardWidget({required this.order, required this.fmt, required this.isDark});
+  const _TransferTile({required this.order, required this.fmt});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Padding(
@@ -402,46 +573,73 @@ class _TransferCardWidget extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.receipt_long_rounded, size: 18, color: Colors.grey),
-                    const SizedBox(width: 6),
+                    Icon(Icons.receipt_long_rounded, size: 14, color: AppTheme.textSecondary),
+                    const SizedBox(width: 5),
                     Text(
                       order.ref,
-                      style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w900, color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
                 _StatusBadge(status: order.status),
               ],
             ),
-            const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider(height: 1)),
-            
+
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(color: Colors.white.withOpacity(0.06), height: 1),
+            ),
+
+            // مسار التحويل
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: isDark ? Colors.grey[800] : Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.account_balance_rounded, color: AppTheme.gold),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.account_balance_rounded, color: Colors.amber, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('مسار التحويل', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(
+                        'مسار التحويل',
+                        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontFamily: 'Cairo'),
+                      ),
                       const SizedBox(height: 4),
-                      Text('${order.fromBank} ➔ ${order.toBank}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${order.fromBank}  ➔  ${order.toBank}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Cairo',
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+
+            const SizedBox(height: 14),
+
+            // مربع المبالغ
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.grey[800] : Colors.grey[50],
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -449,15 +647,27 @@ class _TransferCardWidget extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('المبلغ المرسل', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text('${fmt.format(order.amount)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('المبلغ المرسل', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontFamily: 'Cairo')),
+                      Text(
+                        '${fmt.format(order.amount)} أوقية',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Cairo', fontSize: 13),
+                      ),
                     ],
                   ),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textSecondary),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('المبلغ المستلم', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      Text('${fmt.format(order.receive)} أوقية', style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.green, fontSize: 15)),
+                      Text('المبلغ المستلم', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontFamily: 'Cairo')),
+                      Text(
+                        '${fmt.format(order.receive)} أوقية',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.primaryColor,
+                          fontFamily: 'Cairo',
+                          fontSize: 15,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -470,52 +680,48 @@ class _TransferCardWidget extends StatelessWidget {
   }
 }
 
-// ==========================================
-// تصميم شارة الحالة (Status Badge)
-// ==========================================
+// ============================================================================
+// شارة الحالة
+// ============================================================================
 class _StatusBadge extends StatelessWidget {
   final String status;
   const _StatusBadge({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    String label;
-    IconData icon;
+    late Color bg, fg;
+    late String label;
+    late IconData icon;
 
     switch (status.toLowerCase()) {
       case 'done':
-        bg = AppTheme.greenLight;
-        fg = AppTheme.green;
+        bg    = AppTheme.primaryColor.withOpacity(0.15);
+        fg    = AppTheme.primaryColor;
         label = 'مكتمل';
-        icon = Icons.check_circle_rounded;
+        icon  = Icons.check_circle_rounded;
         break;
       case 'rejected':
-        bg = AppTheme.redLight;
-        fg = AppTheme.red;
+        bg    = Colors.redAccent.withOpacity(0.15);
+        fg    = Colors.redAccent;
         label = 'مرفوض';
-        icon = Icons.cancel_rounded;
+        icon  = Icons.cancel_rounded;
         break;
       default:
-        bg = const Color(0xFFFEF3C7);
-        fg = const Color(0xFFD97706);
+        bg    = Colors.amber.withOpacity(0.15);
+        fg    = Colors.amber;
         label = 'قيد المراجعة';
-        icon = Icons.hourglass_top_rounded;
+        icon  = Icons.hourglass_top_rounded;
     }
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isDark) bg = bg.withOpacity(0.2);
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: fg),
+          Icon(icon, size: 13, color: fg),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w900)),
+          Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w900, fontFamily: 'Cairo')),
         ],
       ),
     );
