@@ -5,13 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
-import 'views/splash_screen.dart'; 
+import 'views/splash_screen.dart';
 
-final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.dark);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  String? initializationError;
 
   try {
     await Firebase.initializeApp(
@@ -24,41 +23,42 @@ void main() async {
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
-  } catch (error) {
-    initializationError = error.toString();
-  }
-
-  if (initializationError != null) {
+  } catch (error, stack) {
     runApp(MaterialApp(
       home: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFF0F172A),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24.0),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  const Text('حدث خطأ أثناء تهيئة التطبيق:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                  const SizedBox(height: 12),
-                  Container(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                const Text('خطأ في التشغيل',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                    child: Text(initializationError, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, color: Colors.red), textDirection: TextDirection.ltr),
+                    decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(8)),
+                    child: SingleChildScrollView(
+                      child: Text('$error\n\n$stack',
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Colors.red),
+                        textDirection: TextDirection.ltr),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     ));
-  } else {
-    runApp(const ProviderScope(child: HawwilApp()));
+    return;
   }
+
+  runApp(const ProviderScope(child: HawwilApp()));
 }
 
 class HawwilApp extends ConsumerWidget {
