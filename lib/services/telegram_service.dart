@@ -9,7 +9,7 @@ class TelegramService {
           '?chat_id=${AppConstants.telegramChatId}'
           '&text=${Uri.encodeComponent(message)}';
       await http.get(Uri.parse(url));
-    } catch (e) {
+    } catch (_) {
       // Silent fail
     }
   }

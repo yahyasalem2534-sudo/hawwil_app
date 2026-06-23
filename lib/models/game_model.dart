@@ -27,7 +27,7 @@ class GameModel {
   final String? desc;
   final String? badge;
   final String? provider;
-  final String? productType; // 'game' | 'service'
+  final String? productType;
   final bool isGlobal;
   final List<PackageModel> pkgs;
   final int order;
@@ -48,7 +48,6 @@ class GameModel {
   });
 
   bool get isService => productType == 'service';
-  bool get isRegional => isGlobal == false && pkgs.any((p) => p.region != null);
 
   factory GameModel.fromFirestore(Map<String, dynamic> data, String id) {
     final pkgList = (data['pkgs'] as List<dynamic>? ?? [])

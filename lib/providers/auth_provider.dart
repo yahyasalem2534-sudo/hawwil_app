@@ -1,79 +1,47 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
+import '../models/bank_model.dart';
+import '../models/game_model.dart';
+import '../services/auth_service.dart';
 import '../services/firebase_service.dart';
 
-class AuthException implements Exception {
-  final String message;
-  AuthException(this.message);
-}
-
-class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-
-  Future<void> signInWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) throw AuthException('تم إلغاء تسجيل الدخول');
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      await _auth.signInWithCredential(credential);
-    } on AuthException {
-      rethrow;
-    } catch (_) {
-      throw AuthException('فشل تسجيل الدخول بـ Google');
-    }
-  }
-
-  Future<void> signInWithEmail(String email, String password) async {
-    try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapError(e.code));
-    }
-  }
-
-  Future<void> registerWithEmail(String email, String password) async {
-    try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password);
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapError(e.code));
-    }
-  }
-
-  Future<void> sendPasswordReset(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(_mapError(e.code));
-    }
-  }
-
-  String _mapError(String code) {
-    switch (code) {
-      case 'user-not-found':       return 'البريد الإلكتروني غير مسجل';
-      case 'wrong-password':       return 'كلمة المرور غير صحيحة';
-      case 'email-already-in-use': return 'البريد الإلكتروني مستخدم بالفعل';
-      case 'weak-password':        return 'كلمة المرور ضعيفة جداً';
-      case 'invalid-email':        return 'صيغة البريد الإلكتروني غير صحيحة';
-      case 'too-many-requests':    return 'محاولات كثيرة، حاول لاحقاً';
-      default:                     return 'حدث خطأ، حاول مجدداً';
-    }
-  }
-}
-
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
-
+// ── Core Services ─────────────────────────────────────────────────────────
 final firebaseServiceProvider = Provider<FirebaseService>((ref) => FirebaseService());
+final authServiceProvider      = Provider<AuthService>((ref) => AuthService());
 
+// ── Auth ──────────────────────────────────────────────────────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(firebaseServiceProvider).authStateChanges;
 });
 
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(authStateProvider).value;
+});
+
+// ── Games ─────────────────────────────────────────────────────────────────
+final gamesProvider = StreamProvider<List<GameModel>>((ref) {
+  return ref.watch(firebaseServiceProvider).gamesStream();
+});
+
+final gameGamesProvider = Provider<AsyncValue<List<GameModel>>>((ref) {
+  return ref.watch(gamesProvider).whenData(
+    (games) => games.where((g) => g.productType != 'service').toList(),
+  );
+});
+
+final serviceGamesProvider = Provider<AsyncValue<List<GameModel>>>((ref) {
+  return ref.watch(gamesProvider).whenData(
+    (games) => games.where((g) => g.productType == 'service').toList(),
+  );
+});
+
+// ── Payment Banks (لشاشة الدفع فقط) ──────────────────────────────────────
+final paymentBanksProvider = StreamProvider<List<BankModel>>((ref) {
+  return ref.watch(firebaseServiceProvider).paymentBanksStream();
+});
+
+// ── Sliders ───────────────────────────────────────────────────────────────
+final slidersProvider = FutureProvider<List<String>>((ref) async {
+  return ref.watch(firebaseServiceProvider).fetchSliders();
 });

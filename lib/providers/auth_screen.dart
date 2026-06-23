@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/providers.dart';
+import '../../services/auth_service.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -14,13 +15,13 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
 
   bool _loadingGoogle = false;
   bool _loadingEmail  = false;
-  bool _isLogin       = true; // toggle login / register
+  bool _isLogin       = true;
   bool _obscure       = true;
 
   final _emailCtrl = TextEditingController();
@@ -29,21 +30,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..forward();
-
-    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.08),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))
+      ..forward();
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
@@ -55,266 +52,246 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       backgroundColor: AppTheme.backgroundColor,
       body: Stack(
         children: [
-          // ── خلفية متوهجة ──────────────────────────────────────────────
+          // خلفية متوهجة
           Positioned(
-            top: -100,
-            left: -80,
-            child: Container(
-              width: 350,
-              height: 350,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.primaryColor.withOpacity(0.18),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -120,
-            right: -80,
+            top: -80,
+            left: -60,
             child: Container(
               width: 300,
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    AppTheme.primaryColor.withOpacity(0.10),
-                    Colors.transparent,
-                  ],
-                ),
+                gradient: RadialGradient(colors: [
+                  AppTheme.primaryColor.withOpacity(0.16),
+                  Colors.transparent,
+                ]),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -100,
+            right: -60,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [
+                  AppTheme.primaryColor.withOpacity(0.09),
+                  Colors.transparent,
+                ]),
               ),
             ),
           ),
 
-          // ── المحتوى ────────────────────────────────────────────────────
           SafeArea(
             child: FadeTransition(
-              opacity: _fadeAnim,
+              opacity: _fade,
               child: SlideTransition(
-                position: _slideAnim,
+                position: _slide,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 40, 28, 32),
+                  padding: const EdgeInsets.fromLTRB(26, 36, 26, 30),
                   physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      // الشعار
+                      // Logo
                       Center(
                         child: Column(
                           children: [
                             Container(
-                              width: 80,
-                              height: 80,
+                              width: 78,
+                              height: 78,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(22),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryColor.withOpacity(0.4),
-                                    blurRadius: 30,
-                                    spreadRadius: 2,
-                                  ),
+                                      color: AppTheme.primaryColor
+                                          .withOpacity(0.4),
+                                      blurRadius: 28,
+                                      spreadRadius: 2),
                                 ],
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(22),
-                                child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
+                                child: Image.asset('assets/images/logo.png',
+                                    fit: BoxFit.cover),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                             RichText(
-                              text: const TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'حو',
-                                    style: TextStyle(
-                                      fontSize: 32,
+                              text: const TextSpan(children: [
+                                TextSpan(
+                                  text: 'حوّ',
+                                  style: TextStyle(
+                                      fontSize: 30,
                                       fontWeight: FontWeight.w900,
                                       color: Colors.white,
-                                      fontFamily: 'Cairo',
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: 'ل',
-                                    style: TextStyle(
-                                      fontSize: 32,
+                                      fontFamily: 'Cairo'),
+                                ),
+                                TextSpan(
+                                  text: 'ل',
+                                  style: TextStyle(
+                                      fontSize: 30,
                                       fontWeight: FontWeight.w900,
                                       color: AppTheme.primaryColor,
-                                      fontFamily: 'Cairo',
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                      fontFamily: 'Cairo'),
+                                ),
+                              ]),
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 36),
 
-                      // عنوان النموذج
                       Text(
                         _isLogin ? 'مرحباً بعودتك 👋' : 'إنشاء حساب جديد',
                         style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          fontFamily: 'Cairo',
-                        ),
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            fontFamily: 'Cairo'),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         _isLogin
                             ? 'سجّل دخولك للمتابعة'
-                            : 'انضم إلى منصة حوّل اليوم',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontFamily: 'Cairo',
-                          fontSize: 14,
-                        ),
+                            : 'انضم إلى حوّل اليوم',
+                        style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontFamily: 'Cairo',
+                            fontSize: 13),
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
 
-                      // ── زر Google ─────────────────────────────────────
-                      _GoogleButton(
-                        loading: _loadingGoogle,
-                        onTap: _signInWithGoogle,
-                      ),
+                      // Google
+                      _GoogleBtn(
+                          loading: _loadingGoogle, onTap: _signInGoogle),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // فاصل
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Text(
-                              'أو عبر البريد الإلكتروني',
+                      Row(children: [
+                        Expanded(
+                            child: Divider(
+                                color: Colors.white.withOpacity(0.1))),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('أو بالبريد',
                               style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontFamily: 'Cairo',
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
-                        ],
-                      ),
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                  fontFamily: 'Cairo')),
+                        ),
+                        Expanded(
+                            child: Divider(
+                                color: Colors.white.withOpacity(0.1))),
+                      ]),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // ── حقل البريد ───────────────────────────────────
-                      _AuthField(
-                        controller: _emailCtrl,
-                        label: 'البريد الإلكتروني',
-                        icon: Icons.email_outlined,
-                        type: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 14),
-
-                      // ── حقل كلمة المرور ──────────────────────────────
-                      _AuthField(
+                      _Field(
+                          controller: _emailCtrl,
+                          label: 'البريد الإلكتروني',
+                          icon: Icons.email_outlined,
+                          type: TextInputType.emailAddress),
+                      const SizedBox(height: 12),
+                      _Field(
                         controller: _passCtrl,
                         label: 'كلمة المرور',
                         icon: Icons.lock_outline_rounded,
                         obscure: _obscure,
                         suffix: IconButton(
                           icon: Icon(
-                            _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            _obscure
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                             color: AppTheme.textSecondary,
                             size: 20,
                           ),
-                          onPressed: () => setState(() => _obscure = !_obscure),
+                          onPressed: () =>
+                              setState(() => _obscure = !_obscure),
                         ),
                       ),
 
-                      // نسيت كلمة المرور
                       if (_isLogin)
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton(
                             onPressed: _forgotPassword,
-                            child: Text(
-                              'نسيت كلمة المرور؟',
-                              style: TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontFamily: 'Cairo',
-                                fontSize: 13,
-                              ),
-                            ),
+                            child: const Text('نسيت كلمة المرور؟',
+                                style: TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontFamily: 'Cairo',
+                                    fontSize: 12)),
                           ),
                         ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 22),
 
-                      // ── زر الإرسال ────────────────────────────────────
                       SizedBox(
                         width: double.infinity,
-                        height: 56,
+                        height: 54,
                         child: ElevatedButton(
                           onPressed: _loadingEmail ? null : _submitEmail,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryColor,
                             foregroundColor: Colors.white,
                             elevation: 8,
-                            shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                            shadowColor:
+                                AppTheme.primaryColor.withOpacity(0.4),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
+                                borderRadius: BorderRadius.circular(15)),
                           ),
                           child: _loadingEmail
                               ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
+                                  width: 22,
+                                  height: 22,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
+                                      strokeWidth: 2.5,
+                                      color: Colors.white))
                               : Text(
-                                  _isLogin ? 'تسجيل الدخول' : 'إنشاء الحساب',
+                                  _isLogin
+                                      ? 'تسجيل الدخول'
+                                      : 'إنشاء الحساب',
                                   style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w900,
-                                    fontFamily: 'Cairo',
-                                  ),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      fontFamily: 'Cairo'),
                                 ),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 22),
 
-                      // ── تبديل تسجيل / إنشاء ──────────────────────────
                       Center(
                         child: GestureDetector(
                           onTap: () => setState(() {
                             _isLogin = !_isLogin;
-                            _controller.reset();
-                            _controller.forward();
+                            _ctrl.reset();
+                            _ctrl.forward();
                           }),
                           child: RichText(
                             text: TextSpan(
-                              style: const TextStyle(fontFamily: 'Cairo', fontSize: 14),
+                              style: const TextStyle(
+                                  fontFamily: 'Cairo', fontSize: 13),
                               children: [
                                 TextSpan(
                                   text: _isLogin
                                       ? 'ليس لديك حساب؟  '
-                                      : 'لديك حساب بالفعل؟  ',
-                                  style: TextStyle(color: AppTheme.textSecondary),
+                                      : 'لديك حساب؟  ',
+                                  style: const TextStyle(
+                                      color: AppTheme.textSecondary),
                                 ),
                                 TextSpan(
-                                  text: _isLogin ? 'إنشاء حساب' : 'تسجيل الدخول',
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                                  text: _isLogin
+                                      ? 'إنشاء حساب'
+                                      : 'تسجيل الدخول',
+                                  style: const TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.w900),
                                 ),
                               ],
                             ),
@@ -332,12 +309,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     );
   }
 
-  // ── المنطق ──────────────────────────────────────────────────────────────
-
-  Future<void> _signInWithGoogle() async {
+  Future<void> _signInGoogle() async {
     setState(() => _loadingGoogle = true);
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       _snack('فشل تسجيل الدخول بـ Google', Icons.error_outline_rounded);
     }
@@ -347,16 +323,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   Future<void> _submitEmail() async {
     final email = _emailCtrl.text.trim();
     final pass  = _passCtrl.text.trim();
-
     if (email.isEmpty || pass.isEmpty) {
       _snack('يرجى ملء جميع الحقول', Icons.warning_amber_rounded);
       return;
     }
     if (pass.length < 6) {
-      _snack('كلمة المرور يجب أن تكون 6 أحرف على الأقل', Icons.lock_outline_rounded);
+      _snack('كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+          Icons.lock_outline_rounded);
       return;
     }
-
     setState(() => _loadingEmail = true);
     try {
       if (_isLogin) {
@@ -364,6 +339,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       } else {
         await ref.read(authServiceProvider).registerWithEmail(email, pass);
       }
+      if (mounted) Navigator.pop(context);
     } on AuthException catch (e) {
       _snack(e.message, Icons.error_outline_rounded);
     } catch (_) {
@@ -380,90 +356,81 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     }
     try {
       await ref.read(authServiceProvider).sendPasswordReset(email);
-      _snack('تم إرسال رابط الاستعادة إلى بريدك', Icons.check_circle_outline_rounded, success: true);
+      _snack('تم إرسال رابط الاستعادة', Icons.check_circle_outline_rounded,
+          success: true);
     } catch (_) {
-      _snack('تعذّر إرسال الرابط، تحقق من البريد', Icons.error_outline_rounded);
+      _snack('تعذّر إرسال الرابط', Icons.error_outline_rounded);
     }
   }
 
   void _snack(String msg, IconData icon, {bool success = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                msg,
-                style: const TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: success ? AppTheme.primaryColor : const Color(0xFF1E293B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(msg,
+                style: const TextStyle(
+                    fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
+      ]),
+      backgroundColor:
+          success ? AppTheme.primaryColor : const Color(0xFF1E293B),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 3),
+    ));
   }
 }
 
-// ============================================================================
-// زر Google
-// ============================================================================
-class _GoogleButton extends StatelessWidget {
+// ── Google Button ─────────────────────────────────────────────────────────
+class _GoogleBtn extends StatelessWidget {
   final bool loading;
   final VoidCallback onTap;
-  const _GoogleButton({required this.loading, required this.onTap});
+  const _GoogleBtn({required this.loading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 56,
+        duration: const Duration(milliseconds: 180),
+        height: 54,
         decoration: BoxDecoration(
-          color: loading ? AppTheme.surfaceColor.withOpacity(0.6) : AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          color: loading
+              ? AppTheme.surfaceColor.withOpacity(0.6)
+              : AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.white.withOpacity(0.07)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: loading
             ? const Center(
                 child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5, color: AppTheme.primaryColor)))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // شعار Google بالألوان الحقيقية
-                  _GoogleLogo(),
+                  SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CustomPaint(painter: _GooglePainter())),
                   const SizedBox(width: 12),
                   const Text(
                     'المتابعة بحساب Google',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Cairo',
-                      fontSize: 15,
-                    ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Cairo',
+                        fontSize: 14),
                   ),
                 ],
               ),
@@ -472,58 +439,35 @@ class _GoogleButton extends StatelessWidget {
   }
 }
 
-class _GoogleLogo extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 22,
-      height: 22,
-      child: CustomPaint(painter: _GoogleLogoPainter()),
-    );
-  }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
+class _GooglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    // رسم الدائرة الخلفية
-    final bgPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // قطاعات Google
-    final segments = [
-      (Colors.red[600]!,    -0.26,  0.5),
-      (Colors.yellow[700]!, 0.24,   0.5),
-      (Colors.green[600]!,  0.74,   0.5),
-      (Colors.blue[600]!,   1.24,   0.74),
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+    canvas.drawCircle(c, r, Paint()..color = Colors.white);
+    final segs = [
+      (Colors.red[600]!, -0.26, 0.5),
+      (Colors.yellow[700]!, 0.24, 0.5),
+      (Colors.green[600]!, 0.74, 0.5),
+      (Colors.blue[600]!, 1.24, 0.74),
     ];
-
-    for (final seg in segments) {
-      final paint = Paint()..color = seg.$1;
+    for (final s in segs) {
       canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - 1),
-        seg.$2 * 3.14159,
-        seg.$3 * 3.14159,
-        true,
-        paint,
-      );
+          Rect.fromCircle(center: c, radius: r - 1),
+          s.$2 * 3.14159,
+          s.$3 * 3.14159,
+          true,
+          Paint()..color = s.$1);
     }
-
-    // ثقب المنتصف
-    canvas.drawCircle(center, radius * 0.45, Paint()..color = AppTheme.surfaceColor);
+    canvas.drawCircle(c, r * 0.45, Paint()..color = AppTheme.surfaceColor);
   }
 
   @override
   bool shouldRepaint(_) => false;
 }
 
-// ============================================================================
-// حقل الإدخال
-// ============================================================================
-class _AuthField extends StatelessWidget {
+// ── Field ─────────────────────────────────────────────────────────────────
+class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
@@ -531,7 +475,7 @@ class _AuthField extends StatelessWidget {
   final bool obscure;
   final Widget? suffix;
 
-  const _AuthField({
+  const _Field({
     required this.controller,
     required this.label,
     required this.icon,
@@ -549,12 +493,10 @@ class _AuthField extends StatelessWidget {
       style: const TextStyle(color: Colors.white, fontFamily: 'Cairo'),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: AppTheme.textSecondary,
-          fontFamily: 'Cairo',
-          fontSize: 13,
-        ),
-        prefixIcon: Icon(icon, color: AppTheme.textSecondary, size: 20),
+        labelStyle: const TextStyle(
+            color: AppTheme.textSecondary, fontFamily: 'Cairo', fontSize: 13),
+        prefixIcon:
+            Icon(icon, color: AppTheme.textSecondary, size: 20),
         suffixIcon: suffix,
         filled: true,
         fillColor: AppTheme.surfaceColor,
@@ -568,7 +510,8 @@ class _AuthField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide:
+              const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
       ),
     );

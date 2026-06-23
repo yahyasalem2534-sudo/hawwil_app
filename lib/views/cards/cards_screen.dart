@@ -1,11 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../providers/data_providers.dart';
 import '../../models/game_model.dart';
+import '../../providers/providers.dart';
 import 'product_modal.dart';
 
 class CardsScreen extends ConsumerStatefulWidget {
@@ -16,153 +16,165 @@ class CardsScreen extends ConsumerStatefulWidget {
 }
 
 class _CardsScreenState extends ConsumerState<CardsScreen> {
-  // 0 يعني تبويب الألعاب، 1 يعني تبويب البطاقات
-  int _selectedIndex = 0;
+  int _tab = 0; // 0=ألعاب  1=بطاقات
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // جلب البيانات بناءً على التبويب المحدد
-    final asyncData = _selectedIndex == 0 
-        ? ref.watch(gameGamesProvider) 
+    final data = _tab == 0
+        ? ref.watch(gameGamesProvider)
         : ref.watch(serviceGamesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الكتالوج'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Column(
-        children: [
-          // --- أزرار التبديل العلوية (Segmented Control) ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[800] : Colors.grey[200],
-                borderRadius: BorderRadius.circular(16),
-              ),
+      backgroundColor: AppTheme.backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  Expanded(
-                    child: _buildTabButton(
-                      title: '🎮 الألعاب',
-                      isSelected: _selectedIndex == 0,
-                      onTap: () => setState(() => _selectedIndex = 0),
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildTabButton(
-                      title: '💳 البطاقات الرقمية',
-                      isSelected: _selectedIndex == 1,
-                      onTap: () => setState(() => _selectedIndex = 1),
+                  const Text(
+                    'الكتالوج',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      fontFamily: 'Cairo',
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          
-          const SizedBox(height: 10),
 
-          // --- شبكة المنتجات (Grid) ---
-          Expanded(
-            child: asyncData.when(
-              data: (items) {
-                if (items.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          _selectedIndex == 0 ? 'لا توجد ألعاب حالياً' : 'لا توجد بطاقات حالياً',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+            const SizedBox(height: 14),
 
-                return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  physics: const BouncingScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.72, // نسبة الطول إلى العرض للبطاقة
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return GridProductCard(
-                      game: item,
-                      onTap: () => showProductModal(context, item),
-                    );
-                  },
-                );
-              },
-              loading: () => _buildShimmerGrid(context),
-              error: (error, stack) => Center(
-                child: Text('حدث خطأ في تحميل البيانات', style: TextStyle(color: AppTheme.red, fontWeight: FontWeight.bold)),
+            // Tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    _tab_(0, '🎮  الألعاب'),
+                    _tab_(1, '💳  البطاقات'),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 10),
+
+            // Grid
+            Expanded(
+              child: data.when(
+                loading: () => _shimmerGrid(),
+                error: (_, __) => const Center(
+                  child: Text('حدث خطأ',
+                      style: TextStyle(color: Colors.redAccent)),
+                ),
+                data: (items) {
+                  if (items.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.inventory_2_outlined,
+                              size: 56, color: Colors.grey[700]),
+                          const SizedBox(height: 14),
+                          Text(
+                            'لا يوجد شيء هنا حالياً',
+                            style: TextStyle(
+                                color: Colors.grey[600],
+                                fontFamily: 'Cairo',
+                                fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return GridView.builder(
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 10, 16, 20),
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.72,
+                      mainAxisSpacing: 14,
+                      crossAxisSpacing: 14,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (ctx, i) {
+                      final item = items[i];
+                      return _GridCard(
+                        game: item,
+                        onTap: () => showProductModal(ctx, item),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // تصميم زر التبويب
-  Widget _buildTabButton({required String title, required bool isSelected, required VoidCallback onTap}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.green : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: isSelected 
-              ? [BoxShadow(color: AppTheme.green.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2))] 
-              : [],
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: isSelected ? Colors.white : (isDark ? Colors.grey[400] : Colors.grey[600]),
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
-            fontSize: 14,
+  Widget _tab_(int index, String label) {
+    final sel = _tab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tab = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: sel ? AppTheme.primaryColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: sel
+                ? [
+                    BoxShadow(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2))
+                  ]
+                : [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: sel ? Colors.white : AppTheme.textSecondary,
+              fontWeight: sel ? FontWeight.w900 : FontWeight.w600,
+              fontSize: 13,
+              fontFamily: 'Cairo',
+            ),
           ),
         ),
       ),
     );
   }
 
-  // تأثير التحميل (Skeleton) للشبكة
-  Widget _buildShimmerGrid(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _shimmerGrid() {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.72,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
       ),
       itemCount: 6,
       itemBuilder: (_, __) => Shimmer.fromColors(
-        baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-        highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+        baseColor: AppTheme.surfaceColor,
+        highlightColor: AppTheme.surface2Color,
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -174,44 +186,38 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
   }
 }
 
-// --- تصميم البطاقة المخصصة لصفحة الكتالوج ---
-class GridProductCard extends StatelessWidget {
+class _GridCard extends StatelessWidget {
   final GameModel game;
   final VoidCallback onTap;
 
-  const GridProductCard({
-    super.key,
-    required this.game,
-    required this.onTap,
-  });
+  const _GridCard({required this.game, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    // حساب أقل سعر
-    double startingPrice = 0;
-    if (game.pkgs.isNotEmpty) {
-      startingPrice = game.pkgs.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-    }
-    
     final imageUrl = game.logo ?? game.icon ?? '';
+    final minPrice = game.pkgs.isEmpty
+        ? 0.0
+        : game.pkgs.map((p) => p.price).reduce((a, b) => a < b ? a : b);
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // منطقة الصورة
               Expanded(
                 flex: 5,
                 child: Container(
@@ -219,23 +225,30 @@ class GridProductCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(18)),
                   ),
                   child: imageUrl.isEmpty
-                      ? const Icon(Icons.videogame_asset, size: 50, color: Colors.grey)
+                      ? const Icon(Icons.videogame_asset,
+                          size: 46, color: Colors.grey)
                       : CachedNetworkImage(
                           imageUrl: imageUrl,
-                          fit: BoxFit.contain, // السر في عدم قص أي شعار مهما كان حجمه
-                          placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: AppTheme.greenLight)),
-                          errorWidget: (context, url, error) => const Icon(Icons.image_not_supported, color: Colors.grey),
+                          fit: BoxFit.contain,
+                          placeholder: (_, __) => const Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppTheme.primaryColor),
+                          ),
+                          errorWidget: (_, __, ___) => const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey),
                         ),
                 ),
               ),
-              // منطقة النصوص
               Expanded(
                 flex: 4,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(11),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -244,18 +257,26 @@ class GridProductCard extends StatelessWidget {
                         game.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontFamily: 'Cairo',
+                            color: Colors.white),
                       ),
-                      const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppTheme.greenLight.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'من ${startingPrice.toStringAsFixed(0)} أوقية',
-                          style: const TextStyle(color: AppTheme.green, fontWeight: FontWeight.w900, fontSize: 11),
+                          'من ${minPrice.toStringAsFixed(0)} أوقية',
+                          style: const TextStyle(
+                              color: AppTheme.green,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                              fontFamily: 'Cairo'),
                         ),
                       ),
                     ],

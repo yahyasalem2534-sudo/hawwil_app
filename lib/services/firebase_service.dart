@@ -6,32 +6,20 @@ import '../models/game_model.dart';
 import '../models/order_model.dart';
 
 class FirebaseService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _db  = FirebaseFirestore.instance;
+  final FirebaseAuth      _auth = FirebaseAuth.instance;
 
-  // ── Auth ──
-  User? get currentUser => _auth.currentUser;
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  User? get currentUser        => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  Future<UserCredential> signInWithEmail(String email, String password) =>
-      _auth.signInWithEmailAndPassword(email: email, password: password);
-
-  Future<UserCredential> registerWithEmail(String email, String password) =>
-      _auth.createUserWithEmailAndPassword(email: email, password: password);
 
   Future<void> signOut() => _auth.signOut();
 
-  // ── Real-time Streams ──
-  Stream<List<BankModel>> banksStream() {
-    return _db
-        .collection(AppConstants.banksCollection)
-        .orderBy('order')
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => BankModel.fromFirestore(d.data(), d.id))
-            .toList());
+  Future<void> deleteAccount() async {
+    await _auth.currentUser?.delete();
   }
 
+  // ── Streams ───────────────────────────────────────────────────────────────
   Stream<List<GameModel>> gamesStream() {
     return _db
         .collection(AppConstants.gamesCollection)
@@ -52,21 +40,21 @@ class FirebaseService {
             .toList());
   }
 
-  // ── Orders ──
-  Future<void> submitTransfer({
-    required String uid,
-    required String ref,
-    required Map<String, dynamic> data,
-  }) async {
-    await _db.collection(AppConstants.transfersCollection).add({
-      'uid': uid,
-      'ref': ref,
-      ...data,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  // ── Sliders ───────────────────────────────────────────────────────────────
+  Future<List<String>> fetchSliders() async {
+    try {
+      final snap = await _db.collection(AppConstants.slidersCollection).get();
+      return snap.docs.map((doc) {
+        final data = doc.data();
+        final url = data['bannerUrl'] ?? data['image'] ?? data['imageUrl'] ?? '';
+        return url.toString();
+      }).where((url) => url.isNotEmpty).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
+  // ── Orders ────────────────────────────────────────────────────────────────
   Future<void> submitCard({
     required String uid,
     required String ref,
@@ -81,40 +69,25 @@ class FirebaseService {
     });
   }
 
-  // ── User Orders ──
-  Future<List<TransferOrder>> getUserTransfers(String uid) async {
-    final snap = await _db
-        .collection(AppConstants.transfersCollection)
-        .where('uid', isEqualTo: uid)
-        .get();
-
-    final list = snap.docs.map((d) => TransferOrder.fromFirestore(d.data())).toList();
-    list.sort((a, b) =>
-        (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
-    return list;
-  }
-
   Future<List<CardOrder>> getUserCards(String uid) async {
     final snap = await _db
         .collection(AppConstants.cardsCollection)
         .where('uid', isEqualTo: uid)
         .get();
-
-    final list = snap.docs.map((d) => CardOrder.fromFirestore(d.data())).toList();
+    final list = snap.docs
+        .map((d) => CardOrder.fromFirestore(d.data()))
+        .toList();
     list.sort((a, b) =>
         (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
     return list;
   }
 
-  // ── Order Tracking ──
   Stream<Map<String, dynamic>?> trackOrder(String ref) {
-    final collection =
-        ref.startsWith('HW') ? AppConstants.transfersCollection : AppConstants.cardsCollection;
-
     return _db
-        .collection(collection)
+        .collection(AppConstants.cardsCollection)
         .where('ref', isEqualTo: ref)
         .snapshots()
-        .map((snap) => snap.docs.isNotEmpty ? snap.docs.first.data() : null);
+        .map((snap) =>
+            snap.docs.isNotEmpty ? snap.docs.first.data() : null);
   }
 }
